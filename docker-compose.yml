@@ -8,6 +8,17 @@
 # 否则客户端 bootstrap 能连上，但元数据会返回 localhost:9092 导致连接失败。
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: omni-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   kafka:
     image: apache/kafka:3.7.0
     container_name: omni-kafka

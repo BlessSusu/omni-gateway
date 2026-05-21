@@ -9,6 +9,8 @@ import com.omni.gateway.core.session.DeviceSession;
 import com.omni.gateway.core.downlink.DownlinkResultPublisher;
 import com.omni.gateway.network.logging.ConfigurableProtocolTrafficLog;
 import com.omni.gateway.network.metrics.OmniMetrics;
+import com.omni.gateway.network.observability.GatewayTracing;
+import io.micrometer.tracing.Tracer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import org.slf4j.Logger;
@@ -26,18 +28,25 @@ public class DownlinkDispatcher {
     private final OmniMetrics metrics;
     private final ConcurrentHashMap<String, Long> processedMessages = new ConcurrentHashMap<>();
     private final ConfigurableProtocolTrafficLog protocolTrafficLog;
+    private final Tracer tracer;
 
     public DownlinkDispatcher(PluginRegistry pluginRegistry,
                               DownlinkResultPublisher resultPublisher,
                               OmniMetrics metrics,
-                              ConfigurableProtocolTrafficLog protocolTrafficLog) {
+                              ConfigurableProtocolTrafficLog protocolTrafficLog,
+                              Tracer tracer) {
         this.pluginRegistry = pluginRegistry;
         this.resultPublisher = resultPublisher;
         this.metrics = metrics;
         this.protocolTrafficLog = protocolTrafficLog;
+        this.tracer = tracer;
     }
 
     public void dispatch(DeviceSession session, CommandEnvelope cmd) {
+        GatewayTracing.run(tracer, "downlink.dispatch", () -> dispatchInternal(session, cmd));
+    }
+
+    private void dispatchInternal(DeviceSession session, CommandEnvelope cmd) {
         String messageId = cmd.getMessageId();
         if (messageId != null && processedMessages.putIfAbsent(messageId, System.currentTimeMillis()) != null) {
             resultPublisher.publish(DownlinkResult.of(messageId, cmd.getDeviceId(), DownlinkStatus.SUCCESS, "duplicate"));

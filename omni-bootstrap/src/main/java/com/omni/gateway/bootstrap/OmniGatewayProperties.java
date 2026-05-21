@@ -4,6 +4,7 @@ import com.omni.gateway.core.config.GatewayConfigSnapshot;
 import com.omni.gateway.core.config.PortListenerConfig;
 import com.omni.gateway.core.config.SecurityConfig;
 import com.omni.gateway.core.config.SniffConfig;
+import com.omni.gateway.core.config.TlsConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.ArrayList;
@@ -20,6 +21,16 @@ public class OmniGatewayProperties {
     private Config config = new Config();
     private Backpressure backpressure = new Backpressure();
     private Logging logging = new Logging();
+    private Session session = new Session();
+    private Tls tls = new Tls();
+    private Observability observability = new Observability();
+
+    public long resolveSessionRedisTtlSeconds() {
+        if (session.getRedisTtlSeconds() > 0) {
+            return session.getRedisTtlSeconds();
+        }
+        return Math.max(60L, (long) gateway.getReaderIdleSeconds() * 3);
+    }
 
     public GatewayConfigSnapshot toSnapshot() {
         GatewayConfigSnapshot snap = new GatewayConfigSnapshot();
@@ -44,9 +55,17 @@ public class OmniGatewayProperties {
             sniff.setTimeoutMs(l.getSniff().getTimeoutMs());
             sniff.setMinProbeLength(l.getSniff().getMinProbeLength());
             plc.setSniff(sniff);
+            plc.setTls(l.isTls());
             listeners.add(plc);
         }
         snap.setListeners(listeners);
+        TlsConfig tlsConfig = new TlsConfig();
+        tlsConfig.setEnabled(tls.isEnabled());
+        tlsConfig.setMtlsEnabled(tls.isMtlsEnabled());
+        tlsConfig.setCertPath(tls.getCertPath());
+        tlsConfig.setKeyPath(tls.getKeyPath());
+        tlsConfig.setTrustCertPath(tls.getTrustCertPath());
+        snap.setTls(tlsConfig);
         return snap;
     }
 
@@ -114,6 +133,111 @@ public class OmniGatewayProperties {
         this.logging = logging;
     }
 
+    public Session getSession() {
+        return session;
+    }
+
+    public void setSession(Session session) {
+        this.session = session;
+    }
+
+    public Tls getTls() {
+        return tls;
+    }
+
+    public void setTls(Tls tls) {
+        this.tls = tls;
+    }
+
+    public Observability getObservability() {
+        return observability;
+    }
+
+    public void setObservability(Observability observability) {
+        this.observability = observability;
+    }
+
+    public static class Session {
+        private boolean redisEnabled;
+        private long redisTtlSeconds;
+
+        public boolean isRedisEnabled() {
+            return redisEnabled;
+        }
+
+        public void setRedisEnabled(boolean redisEnabled) {
+            this.redisEnabled = redisEnabled;
+        }
+
+        public long getRedisTtlSeconds() {
+            return redisTtlSeconds;
+        }
+
+        public void setRedisTtlSeconds(long redisTtlSeconds) {
+            this.redisTtlSeconds = redisTtlSeconds;
+        }
+    }
+
+    public static class Tls {
+        private boolean enabled;
+        private boolean mtlsEnabled;
+        private String certPath = "classpath:certs/server.pem";
+        private String keyPath = "classpath:certs/server-key.pem";
+        private String trustCertPath = "classpath:certs/ca.pem";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public boolean isMtlsEnabled() {
+            return mtlsEnabled;
+        }
+
+        public void setMtlsEnabled(boolean mtlsEnabled) {
+            this.mtlsEnabled = mtlsEnabled;
+        }
+
+        public String getCertPath() {
+            return certPath;
+        }
+
+        public void setCertPath(String certPath) {
+            this.certPath = certPath;
+        }
+
+        public String getKeyPath() {
+            return keyPath;
+        }
+
+        public void setKeyPath(String keyPath) {
+            this.keyPath = keyPath;
+        }
+
+        public String getTrustCertPath() {
+            return trustCertPath;
+        }
+
+        public void setTrustCertPath(String trustCertPath) {
+            this.trustCertPath = trustCertPath;
+        }
+    }
+
+    public static class Observability {
+        private boolean traceEnabled = true;
+
+        public boolean isTraceEnabled() {
+            return traceEnabled;
+        }
+
+        public void setTraceEnabled(boolean traceEnabled) {
+            this.traceEnabled = traceEnabled;
+        }
+    }
+
     public static class Logging {
         /** 是否打印完整协议帧十六进制（recv/send 流量日志） */
         private boolean protocolHexEnabled = false;
@@ -177,6 +301,7 @@ public class OmniGatewayProperties {
 
     public static class Listener {
         private int port;
+        private boolean tls;
         private List<String> plugins = new ArrayList<>();
         private List<String> pluginPriority = new ArrayList<>();
         private SniffProps sniff = new SniffProps();
@@ -187,6 +312,14 @@ public class OmniGatewayProperties {
 
         public void setPort(int port) {
             this.port = port;
+        }
+
+        public boolean isTls() {
+            return tls;
+        }
+
+        public void setTls(boolean tls) {
+            this.tls = tls;
         }
 
         public List<String> getPlugins() {
@@ -376,9 +509,16 @@ public class OmniGatewayProperties {
     public static class Downlink {
         private boolean enabled = true;
         private String topic = "omni.command.downlink";
+        private String nodeTopicPattern = "omni.command.downlink.{nodeId}";
+        private boolean routerEnabled;
+        private String routerConsumerGroup = "omni-gateway-downlink-router";
         private String resultTopic = "omni.command.downlink.result";
         private boolean resultEnabled = true;
         private String consumerGroupSuffix = "local";
+
+        public String resolveNodeTopic(String nodeId) {
+            return nodeTopicPattern.replace("{nodeId}", nodeId);
+        }
 
         public boolean isEnabled() {
             return enabled;
@@ -394,6 +534,30 @@ public class OmniGatewayProperties {
 
         public void setTopic(String topic) {
             this.topic = topic;
+        }
+
+        public String getNodeTopicPattern() {
+            return nodeTopicPattern;
+        }
+
+        public void setNodeTopicPattern(String nodeTopicPattern) {
+            this.nodeTopicPattern = nodeTopicPattern;
+        }
+
+        public boolean isRouterEnabled() {
+            return routerEnabled;
+        }
+
+        public void setRouterEnabled(boolean routerEnabled) {
+            this.routerEnabled = routerEnabled;
+        }
+
+        public String getRouterConsumerGroup() {
+            return routerConsumerGroup;
+        }
+
+        public void setRouterConsumerGroup(String routerConsumerGroup) {
+            this.routerConsumerGroup = routerConsumerGroup;
         }
 
         public String getResultTopic() {

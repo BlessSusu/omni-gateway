@@ -2,7 +2,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| 状态 | **待确认** |
+| 状态 | **已实现**（Phase 2：Micrometer OTel bridge、`protocol.sniff` / `kafka.uplink.publish` / `downlink.dispatch` spans，见 `docs/observability/`） |
 | 依赖模块 | omni-core, omni-network, omni-bootstrap |
 | 技术栈 | Micrometer, Prometheus, Grafana；可选 OpenTelemetry |
 

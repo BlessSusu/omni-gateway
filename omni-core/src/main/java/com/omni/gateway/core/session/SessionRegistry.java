@@ -13,4 +13,6 @@ public interface SessionRegistry {
     Optional<DeviceSession> get(String deviceId);
 
     int localSessionCount();
+
+    int localSessionCountOnPort(int port);
 }

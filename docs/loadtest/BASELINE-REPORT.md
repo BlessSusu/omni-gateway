@@ -65,3 +65,51 @@ python tools/loadtest/pt02_uplink_throughput.py --devices 50 --duration-sec 60
 
 - [ ] 达到第一期 MVP 验收
 - [ ] 需调优后复测
+
+---
+
+# Phase 2 压测基线（生产化）
+
+| 项 | 值 |
+|----|-----|
+| 日期 | _填写_ |
+| Redis | docker compose redis:6379 |
+| 下行 Topic | `omni.command.downlink.{nodeId}` |
+
+## PT-03 下行路由
+
+```bash
+python tools/loadtest/pt03_downlink_routing.py --device-id <id> --node-id <nodeId>
+# 或迁移模式: --use-router
+```
+
+| 指标 | 目标 | 实测 |
+|------|------|------|
+| `omni_downlink_skip_not_local_total` 增速 | ≈ 0 | |
+| 仅目标节点写 socket | 是 | |
+
+## PT-05 TLS
+
+```bash
+python tools/loadtest/pt05_tls_handshake.py --port 9443 --insecure
+```
+
+| 指标 | 目标 | 实测 |
+|------|------|------|
+| TLS 握手 | 成功 | |
+| 嗅探+业务 | 正常 | |
+
+## PT-06 滚动重启
+
+```bash
+python tools/loadtest/pt06_rolling_restart.py --timeout-sec 120
+```
+
+| 指标 | 目标 | 实测 |
+|------|------|------|
+| drain 后会话清零 | ≤ timeout | |
+
+## Phase 2 结论
+
+- [x] 代码交付 M7～M11（见 [PHASE2.md](../PHASE2.md)）
+- [ ] 压测实测通过（待填表）

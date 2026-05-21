@@ -9,10 +9,13 @@ import com.omni.gateway.core.model.ThingModel;
 import com.omni.gateway.core.plugin.ProtocolPlugin;
 import com.omni.gateway.core.plugin.PluginRegistry;
 import com.omni.gateway.core.session.DeviceSession;
+import com.omni.gateway.core.session.DistributedSessionIndex;
 import com.omni.gateway.core.session.SessionRegistry;
 import com.omni.gateway.core.uplink.UplinkPublisher;
 import com.omni.gateway.network.logging.ConfigurableProtocolTrafficLog;
 import com.omni.gateway.network.metrics.OmniMetrics;
+import com.omni.gateway.network.observability.GatewayTracing;
+import io.micrometer.tracing.Tracer;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -29,29 +32,38 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
 
     private final PluginRegistry pluginRegistry;
     private final SessionRegistry sessionRegistry;
+    private final DistributedSessionIndex distributedSessionIndex;
+    private final long sessionIndexTtlSec;
     private final UplinkPublisher uplinkPublisher;
     private final OmniMetrics metrics;
     private final String gatewayNodeId;
     private final BackpressureController backpressure;
     private final DeviceLifecyclePublisher lifecyclePublisher;
     private final ConfigurableProtocolTrafficLog protocolTrafficLog;
+    private final Tracer tracer;
 
     public UplinkDispatchHandler(PluginRegistry pluginRegistry,
                                  SessionRegistry sessionRegistry,
+                                 DistributedSessionIndex distributedSessionIndex,
+                                 long sessionIndexTtlSec,
                                  UplinkPublisher uplinkPublisher,
                                  OmniMetrics metrics,
                                  String gatewayNodeId,
                                  BackpressureController backpressure,
                                  DeviceLifecyclePublisher lifecyclePublisher,
-                                 ConfigurableProtocolTrafficLog protocolTrafficLog) {
+                                 ConfigurableProtocolTrafficLog protocolTrafficLog,
+                                 Tracer tracer) {
         this.pluginRegistry = pluginRegistry;
         this.sessionRegistry = sessionRegistry;
+        this.distributedSessionIndex = distributedSessionIndex;
+        this.sessionIndexTtlSec = sessionIndexTtlSec;
         this.uplinkPublisher = uplinkPublisher;
         this.metrics = metrics;
         this.gatewayNodeId = gatewayNodeId;
         this.backpressure = backpressure;
         this.lifecyclePublisher = lifecyclePublisher;
         this.protocolTrafficLog = protocolTrafficLog;
+        this.tracer = tracer;
     }
 
     @Override
@@ -68,6 +80,9 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
         }
 
         session.touch();
+        if (session.getDeviceId() != null) {
+            distributedSessionIndex.renew(session.getDeviceId(), sessionIndexTtlSec);
+        }
         logProtocolReceived(protocolId, session, plugin, msg, "recv");
         Boolean authenticated = ctx.channel().attr(ChannelAttributes.AUTHENTICATED).get();
         if (authenticated == null || !authenticated) {
@@ -88,6 +103,8 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
             }
             ctx.channel().attr(ChannelAttributes.AUTHENTICATED).set(true);
             sessionRegistry.bind(session.getDeviceId(), session);
+            distributedSessionIndex.register(
+                    session.getDeviceId(), gatewayNodeId, protocolId, sessionIndexTtlSec);
             backpressure.registerChannel(ctx.channel());
             lifecyclePublisher.publishOnline(session);
             OmniMdc.bindDevice(session.getDeviceId(), protocolId, session.getChannelId());
@@ -115,6 +132,10 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
 
         ThingModel thing = thingOpt.get();
         thing.setGatewayNodeId(gatewayNodeId);
+        String traceId = GatewayTracing.currentTraceId(tracer);
+        if (traceId != null) {
+            thing.setTraceId(traceId);
+        }
         log.info("Uplink parsed protocol={} deviceId={} messageType={} payload={}",
                 protocolId, thing.getDeviceId(), thing.getMessageType(), thing.getPayload());
         OmniMdc.bindDevice(session.getDeviceId(), protocolId, session.getChannelId());

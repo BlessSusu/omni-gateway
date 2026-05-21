@@ -8,8 +8,19 @@ public final class OmniMdc {
     public static final String PROTOCOL = "protocol";
     public static final String CHANNEL_ID = "channelId";
     public static final String EVENT = "event";
+    public static final String TRACE_ID = "traceId";
 
     private OmniMdc() {
+    }
+
+    public static void traceId(String traceId) {
+        if (traceId != null) {
+            MDC.put(TRACE_ID, traceId);
+        }
+    }
+
+    public static void clearTrace() {
+        MDC.remove(TRACE_ID);
     }
 
     public static void bindDevice(String deviceId, String protocol, String channelId) {
@@ -33,5 +44,6 @@ public final class OmniMdc {
         MDC.remove(PROTOCOL);
         MDC.remove(CHANNEL_ID);
         MDC.remove(EVENT);
+        clearTrace();
     }
 }

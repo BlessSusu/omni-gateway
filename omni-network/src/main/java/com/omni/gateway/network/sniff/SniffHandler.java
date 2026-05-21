@@ -7,6 +7,8 @@ import com.omni.gateway.core.plugin.PluginRegistry;
 import com.omni.gateway.core.plugin.ProtocolPlugin;
 import com.omni.gateway.core.session.DeviceSession;
 import com.omni.gateway.network.metrics.OmniMetrics;
+import com.omni.gateway.network.observability.GatewayTracing;
+import io.micrometer.tracing.Tracer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -29,6 +31,7 @@ public class SniffHandler extends ChannelInboundHandlerAdapter {
     private final PluginRegistry pluginRegistry;
     private final PipelineBinder pipelineBinder;
     private final OmniMetrics metrics;
+    private final Tracer tracer;
 
     private ByteBuf cumulation;
     private ScheduledFuture<?> timeoutTask;
@@ -38,12 +41,14 @@ public class SniffHandler extends ChannelInboundHandlerAdapter {
                         Supplier<PortListenerConfig> listenerConfigSupplier,
                         PluginRegistry pluginRegistry,
                         PipelineBinder pipelineBinder,
-                        OmniMetrics metrics) {
+                        OmniMetrics metrics,
+                        Tracer tracer) {
         this.port = port;
         this.listenerConfigSupplier = listenerConfigSupplier;
         this.pluginRegistry = pluginRegistry;
         this.pipelineBinder = pipelineBinder;
         this.metrics = metrics;
+        this.tracer = tracer;
     }
 
     @Override
@@ -100,22 +105,24 @@ public class SniffHandler extends ChannelInboundHandlerAdapter {
     }
 
     private void bindProtocol(ChannelHandlerContext ctx, ProtocolPlugin plugin) {
-        DeviceSession session = ctx.channel().attr(ChannelAttributes.SESSION).get();
-        session.setProtocolId(plugin.pluginId());
-        ctx.channel().attr(ChannelAttributes.BOUND_PROTOCOL).set(plugin.pluginId());
+        GatewayTracing.run(tracer, "protocol.sniff", () -> {
+            DeviceSession session = ctx.channel().attr(ChannelAttributes.SESSION).get();
+            session.setProtocolId(plugin.pluginId());
+            ctx.channel().attr(ChannelAttributes.BOUND_PROTOCOL).set(plugin.pluginId());
 
-        ByteBuf remaining = cumulation;
-        cumulation = null;
+            ByteBuf remaining = cumulation;
+            cumulation = null;
 
-        pipelineBinder.bind(ctx, plugin, session);
-        ctx.pipeline().remove(this);
+            pipelineBinder.bind(ctx, plugin, session);
+            ctx.pipeline().remove(this);
 
-        if (remaining != null && remaining.isReadable()) {
-            ctx.pipeline().fireChannelRead(remaining.retain());
-            remaining.release();
-        } else if (remaining != null) {
-            remaining.release();
-        }
+            if (remaining != null && remaining.isReadable()) {
+                ctx.pipeline().fireChannelRead(remaining.retain());
+                remaining.release();
+            } else if (remaining != null) {
+                remaining.release();
+            }
+        });
     }
 
     private void failAndClose(ChannelHandlerContext ctx, String reason) {

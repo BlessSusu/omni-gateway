@@ -433,8 +433,23 @@ mvn test
 
 ---
 
-## 11. 相关文档
+## 11. 第二期（Redis + 分节点下行）
+
+`docker compose up -d` 已包含 **Redis 6379**。配置见 `omni.session.redis-enabled: true`。
+
+```powershell
+.\scripts\create-downlink-topics.ps1 -NodeIds "local-8080"
+```
+
+业务下行推荐 Topic：`omni.command.downlink.{nodeId}`（`omni.node-id` 与节点一致）。迁移期可设 `omni.downlink.router-enabled: true` 继续写统一 Topic `omni.command.downlink`。
+
+运维：`POST /actuator/omnidrain`、`GET /actuator/omnilisteners`。详见 [PHASE2.md](PHASE2.md)。
+
+---
+
+## 12. 相关文档
 
 - [README.md](../README.md) — 项目概览
 - [PHASE1-ITERATION.md](PHASE1-ITERATION.md) — 迭代功能说明
+- [PHASE2.md](PHASE2.md) — 第二期生产化
 - [PHASES.md](PHASES.md) — 分期规划

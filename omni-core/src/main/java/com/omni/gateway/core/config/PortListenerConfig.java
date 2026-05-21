@@ -9,6 +9,7 @@ public class PortListenerConfig {
     private List<String> plugins = new ArrayList<>();
     private List<String> pluginPriority = new ArrayList<>();
     private SniffConfig sniff = new SniffConfig();
+    private boolean tls;
 
     public int getPort() {
         return port;
@@ -40,5 +41,13 @@ public class PortListenerConfig {
 
     public void setSniff(SniffConfig sniff) {
         this.sniff = sniff;
+    }
+
+    public boolean isTls() {
+        return tls;
+    }
+
+    public void setTls(boolean tls) {
+        this.tls = tls;
     }
 }

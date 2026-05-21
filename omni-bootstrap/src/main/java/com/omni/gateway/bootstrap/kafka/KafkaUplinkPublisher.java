@@ -6,7 +6,9 @@ import com.omni.gateway.bootstrap.OmniGatewayProperties;
 import com.omni.gateway.core.backpressure.BackpressureController;
 import com.omni.gateway.core.model.ThingModel;
 import com.omni.gateway.core.uplink.UplinkPublisher;
+import com.omni.gateway.network.observability.GatewayTracing;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.tracing.Tracer;
 import io.micrometer.core.instrument.Timer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.slf4j.Logger;
@@ -29,14 +31,17 @@ public class KafkaUplinkPublisher implements UplinkPublisher {
     private final Timer publishTimer;
     private final BackpressureController backpressure;
     private final AtomicInteger consecutiveFailures = new AtomicInteger();
+    private final Tracer tracer;
 
     public KafkaUplinkPublisher(KafkaTemplate<String, String> kafkaTemplate,
                                 OmniGatewayProperties properties,
                                 MeterRegistry meterRegistry,
-                                BackpressureController backpressure) {
+                                BackpressureController backpressure,
+                                Tracer tracer) {
         this.kafkaTemplate = kafkaTemplate;
         this.properties = properties;
         this.backpressure = backpressure;
+        this.tracer = tracer;
         this.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         this.publishTimer = Timer.builder("omni_kafka_publish_seconds")
                 .tag("topic", properties.getKafka().getUplinkTopic())
@@ -45,12 +50,20 @@ public class KafkaUplinkPublisher implements UplinkPublisher {
 
     @Override
     public CompletableFuture<Void> publish(ThingModel model) {
+        return GatewayTracing.inSpan(tracer, "kafka.uplink.publish", () -> publishInternal(model));
+    }
+
+    private CompletableFuture<Void> publishInternal(ThingModel model) {
         if (!properties.getKafka().isEnabled()) {
             log.debug("Kafka disabled, skip uplink deviceId={}", model.getDeviceId());
             return CompletableFuture.completedFuture(null);
         }
         CompletableFuture<Void> result = new CompletableFuture<>();
         try {
+            String traceId = GatewayTracing.currentTraceId(tracer);
+            if (traceId != null && model.getTraceId() == null) {
+                model.setTraceId(traceId);
+            }
             String json = objectMapper.writeValueAsString(model);
             ProducerRecord<String, String> record = new ProducerRecord<>(
                     properties.getKafka().getUplinkTopic(),

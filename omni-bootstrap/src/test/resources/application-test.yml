@@ -6,6 +6,10 @@ spring:
     name: omni-gateway-test
   main:
     banner-mode: off
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
 
 omni:
   node-id: test-node
@@ -30,9 +34,13 @@ omni:
     lifecycle-topic: omni.device.lifecycle
     lifecycle-enabled: true
     failure-threshold: 3
+  session:
+    redis-enabled: false
   downlink:
     enabled: true
     topic: omni.command.downlink
+    node-topic-pattern: "omni.command.downlink.{nodeId}"
+    router-enabled: false
     result-topic: omni.command.downlink.result
     result-enabled: true
     consumer-group: omni-gateway-downlink-test

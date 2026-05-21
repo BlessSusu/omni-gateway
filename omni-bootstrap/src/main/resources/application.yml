@@ -4,15 +4,26 @@ server:
 spring:
   application:
     name: omni-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus,metrics,info,omniconfig
+        include: health,prometheus,metrics,info,omniconfig,omnidrain,omnilisteners
   endpoint:
     omniconfig:
       enabled: true
+    omnidrain:
+      enabled: true
+    omnilisteners:
+      enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
   metrics:
     tags:
       application: ${spring.application.name}
@@ -61,12 +72,25 @@ omni:
     lifecycle-topic: omni.device.lifecycle
     lifecycle-enabled: true
     failure-threshold: 3
+  session:
+    redis-enabled: true
+    redis-ttl-seconds: 0
   downlink:
     enabled: true
     topic: omni.command.downlink
+    node-topic-pattern: "omni.command.downlink.{nodeId}"
+    router-enabled: false
     result-topic: omni.command.downlink.result
     result-enabled: true
     consumer-group: omni-gateway-downlink
+  tls:
+    enabled: false
+    mtls-enabled: false
+    cert-path: classpath:certs/server.pem
+    key-path: classpath:certs/server-key.pem
+    trust-cert-path: classpath:certs/ca.pem
+  observability:
+    trace-enabled: true
   logging:
     json-enabled: true
     # 完整协议帧十六进制流量日志（类似 SESSION/SN recv|send）；生产建议 false

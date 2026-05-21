@@ -57,4 +57,9 @@ public class InMemorySessionRegistry implements SessionRegistry {
     public int localSessionCount() {
         return sessions.size();
     }
+
+    @Override
+    public int localSessionCountOnPort(int port) {
+        return (int) sessions.values().stream().filter(s -> s.getLocalPort() == port).count();
+    }
 }

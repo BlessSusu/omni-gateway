@@ -12,6 +12,7 @@ public class GatewayConfigSnapshot {
     private SecurityConfig security = new SecurityConfig();
     private int maxGlobalUplinkPending = 5000;
     private int maxPerChannelUplinkPending = 32;
+    private TlsConfig tls = new TlsConfig();
 
     public long getConfigVersion() {
         return configVersion;
@@ -67,6 +68,14 @@ public class GatewayConfigSnapshot {
 
     public void setMaxPerChannelUplinkPending(int maxPerChannelUplinkPending) {
         this.maxPerChannelUplinkPending = maxPerChannelUplinkPending;
+    }
+
+    public TlsConfig getTls() {
+        return tls;
+    }
+
+    public void setTls(TlsConfig tls) {
+        this.tls = tls;
     }
 
     public PortListenerConfig listenerForPort(int port) {

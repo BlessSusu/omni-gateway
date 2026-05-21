@@ -37,6 +37,7 @@ import static org.awaitility.Awaitility.await;
                 "omni.device.uplink",
                 "omni.device.lifecycle",
                 "omni.command.downlink",
+                "omni.command.downlink.test-node",
                 "omni.command.downlink.result"
         })
 @ActiveProfiles("test")
@@ -103,7 +104,8 @@ class SimpleFrameIntegrationTest {
             ProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(
                     producerProps, new StringSerializer(), new StringSerializer());
             KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
-            template.send(new ProducerRecord<>("omni.command.downlink", DEVICE_ID, cmd)).get(5, TimeUnit.SECONDS);
+            template.send(new ProducerRecord<>("omni.command.downlink.test-node", DEVICE_ID, cmd))
+                    .get(5, TimeUnit.SECONDS);
 
             var downlink = client.readFrame();
             assertThat(downlink.getType()).isEqualTo("setParam");

@@ -6,6 +6,7 @@ import com.omni.gateway.core.model.CommandEnvelope;
 import com.omni.gateway.core.model.DownlinkResult;
 import com.omni.gateway.core.model.DownlinkStatus;
 import com.omni.gateway.core.session.DeviceSession;
+import com.omni.gateway.core.session.DistributedSessionIndex;
 import com.omni.gateway.core.session.SessionRegistry;
 import com.omni.gateway.network.downlink.DeviceSerialExecutor;
 import com.omni.gateway.network.downlink.DownlinkDispatcher;
@@ -24,6 +25,7 @@ public class DownlinkConsumer {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final SessionRegistry sessionRegistry;
+    private final DistributedSessionIndex sessionIndex;
     private final DownlinkDispatcher dispatcher;
     private final DeviceSerialExecutor serialExecutor;
     private final OmniMetrics metrics;
@@ -31,12 +33,14 @@ public class DownlinkConsumer {
     private final OmniGatewayProperties properties;
 
     public DownlinkConsumer(SessionRegistry sessionRegistry,
+                            DistributedSessionIndex sessionIndex,
                             DownlinkDispatcher dispatcher,
                             DeviceSerialExecutor serialExecutor,
                             OmniMetrics metrics,
                             KafkaDownlinkResultPublisher resultPublisher,
                             OmniGatewayProperties properties) {
         this.sessionRegistry = sessionRegistry;
+        this.sessionIndex = sessionIndex;
         this.dispatcher = dispatcher;
         this.serialExecutor = serialExecutor;
         this.metrics = metrics;
@@ -45,7 +49,7 @@ public class DownlinkConsumer {
     }
 
     @KafkaListener(
-            topics = "${omni.downlink.topic:omni.command.downlink}",
+            topics = "#{@downlinkTopicProvider.nodeTopic}",
             groupId = "${omni.downlink.consumer-group:omni-gateway-downlink}-${omni.node-id:local}",
             containerFactory = "downlinkKafkaListenerContainerFactory")
     public void onMessage(ConsumerRecord<String, String> record, Acknowledgment ack) {
@@ -64,9 +68,15 @@ public class DownlinkConsumer {
             }
             var sessionOpt = sessionRegistry.get(cmd.getDeviceId());
             if (sessionOpt.isEmpty()) {
-                metrics.downlinkSkipNotLocal();
-                resultPublisher.publish(DownlinkResult.of(
-                        cmd.getMessageId(), cmd.getDeviceId(), DownlinkStatus.OFFLINE, "not_local"));
+                var route = sessionIndex.lookup(cmd.getDeviceId());
+                if (route.isPresent() && !properties.getNodeId().equals(route.get().nodeId())) {
+                    resultPublisher.publish(DownlinkResult.of(
+                            cmd.getMessageId(), cmd.getDeviceId(), DownlinkStatus.OFFLINE, "not_local"));
+                } else {
+                    metrics.downlinkSkipNotLocal();
+                    resultPublisher.publish(DownlinkResult.of(
+                            cmd.getMessageId(), cmd.getDeviceId(), DownlinkStatus.OFFLINE, "offline"));
+                }
                 ack.acknowledge();
                 return;
             }

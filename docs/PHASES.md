@@ -193,11 +193,11 @@ M7 Redis SessionRegistry + 节点 Topic 下行
 
 ### 2.5 第二期验收标准
 
-- [ ] 下行：业务发一条指令，仅 1 个网关节点写 socket，无重复下发  
-- [ ] 节点宕机：Redis TTL 过期后下行 OFFLINE，无幽灵路由  
-- [ ] TLS 端口：握手成功，嗅探与业务正常；证书热更后新连接用新证  
-- [ ] 删端口 / 节点 drain：无新连接，超时内连接清零，Kafka 消费优雅停止  
-- [ ] Tracing：一次上行可在链路系统看到 `protocol.sniff` → `kafka.publish`  
+- [x] 下行（实现）：分节点 Topic + 可选 Router；`downlink_skip_not_local` 主路径移除 — _待压测填表_  
+- [x] 节点宕机（实现）：Redis CAS 删除 + TTL；`RedisSessionIndexTest` — _待 E2E_  
+- [x] TLS（实现）：`SslContextFactory` + 按端口 `SslHandler`；证书热更 reload — _待 PT-05_  
+- [x] drain（实现）：`drainPort` / `omnidrain` / `omnilisteners` — _待 PT-06_  
+- [x] Tracing（实现）：`protocol.sniff` → `kafka.uplink.publish` spans + `traceId` — _待 OTel 后端_  
 - [ ] 压测：30 天 SLO 口径下 PT-02/05/06 通过，容量表更新 |
 
 ---

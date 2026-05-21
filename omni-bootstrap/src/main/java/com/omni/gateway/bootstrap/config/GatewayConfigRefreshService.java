@@ -2,6 +2,8 @@ package com.omni.gateway.bootstrap.config;
 
 import com.omni.gateway.bootstrap.OmniGatewayProperties;
 import com.omni.gateway.core.config.GatewayConfigSnapshot;
+import com.omni.gateway.core.config.PortListenerConfig;
+import com.omni.gateway.network.server.PortListenerManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -24,12 +26,15 @@ public class GatewayConfigRefreshService {
 
     private final AtomicReference<GatewayConfigSnapshot> configRef;
     private final OmniGatewayProperties properties;
+    private final PortListenerManager portListenerManager;
     private final AtomicLong lastModified = new AtomicLong(0);
 
     public GatewayConfigRefreshService(AtomicReference<GatewayConfigSnapshot> configRef,
-                                       OmniGatewayProperties properties) {
+                                       OmniGatewayProperties properties,
+                                       PortListenerManager portListenerManager) {
         this.configRef = configRef;
         this.properties = properties;
+        this.portListenerManager = portListenerManager;
     }
 
     public GatewayConfigSnapshot current() {
@@ -37,10 +42,31 @@ public class GatewayConfigRefreshService {
     }
 
     public synchronized RefreshResult refreshFromProperties() {
+        GatewayConfigSnapshot old = configRef.get();
         GatewayConfigSnapshot snap = properties.toSnapshot();
         configRef.set(snap);
+        applyListenerDiff(old, snap);
         log.info("Config refreshed from properties version={}", snap.getConfigVersion());
         return RefreshResult.ok(snap.getConfigVersion());
+    }
+
+    private void applyListenerDiff(GatewayConfigSnapshot old, GatewayConfigSnapshot neu) {
+        try {
+            var oldPorts = old.getListeners().stream().map(PortListenerConfig::getPort).collect(java.util.stream.Collectors.toSet());
+            var newPorts = neu.getListeners().stream().map(PortListenerConfig::getPort).collect(java.util.stream.Collectors.toSet());
+            for (int port : newPorts) {
+                if (!oldPorts.contains(port)) {
+                    portListenerManager.startPort(port);
+                }
+            }
+            for (int port : oldPorts) {
+                if (!newPorts.contains(port)) {
+                    portListenerManager.drainPort(port, 60);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Listener diff apply failed", e);
+        }
     }
 
     @SuppressWarnings("unchecked")

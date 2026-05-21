@@ -4,6 +4,7 @@ import com.omni.gateway.core.ChannelAttributes;
 import com.omni.gateway.core.backpressure.BackpressureController;
 import com.omni.gateway.core.lifecycle.DeviceLifecyclePublisher;
 import com.omni.gateway.core.session.DeviceSession;
+import com.omni.gateway.core.session.DistributedSessionIndex;
 import com.omni.gateway.core.session.SessionRegistry;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import io.netty.channel.ChannelHandler;
@@ -18,15 +19,21 @@ public class ConnectionLifecycleHandler extends ChannelInboundHandlerAdapter {
     private static final Logger log = LoggerFactory.getLogger(ConnectionLifecycleHandler.class);
 
     private final SessionRegistry sessionRegistry;
+    private final DistributedSessionIndex distributedSessionIndex;
+    private final String gatewayNodeId;
     private final OmniMetrics metrics;
     private final BackpressureController backpressure;
     private final DeviceLifecyclePublisher lifecyclePublisher;
 
     public ConnectionLifecycleHandler(SessionRegistry sessionRegistry,
+                                      DistributedSessionIndex distributedSessionIndex,
+                                      String gatewayNodeId,
                                       OmniMetrics metrics,
                                       BackpressureController backpressure,
                                       DeviceLifecyclePublisher lifecyclePublisher) {
         this.sessionRegistry = sessionRegistry;
+        this.distributedSessionIndex = distributedSessionIndex;
+        this.gatewayNodeId = gatewayNodeId;
         this.metrics = metrics;
         this.backpressure = backpressure;
         this.lifecyclePublisher = lifecyclePublisher;
@@ -48,6 +55,7 @@ public class ConnectionLifecycleHandler extends ChannelInboundHandlerAdapter {
                 sessionRegistry.unbindIfSame(session.getDeviceId(), session);
                 Boolean auth = ctx.channel().attr(ChannelAttributes.AUTHENTICATED).get();
                 if (Boolean.TRUE.equals(auth)) {
+                    distributedSessionIndex.unregister(session.getDeviceId(), gatewayNodeId);
                     lifecyclePublisher.publishOffline(session);
                 }
                 log.debug("Session closed deviceId={} channel={}", session.getDeviceId(), session.getChannelId());

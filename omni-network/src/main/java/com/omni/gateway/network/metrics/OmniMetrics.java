@@ -13,6 +13,10 @@ public class OmniMetrics {
     private final MeterRegistry registry;
     private final AtomicInteger activeConnections = new AtomicInteger();
 
+    public MeterRegistry registry() {
+        return registry;
+    }
+
     public OmniMetrics(MeterRegistry registry) {
         this.registry = registry;
         Gauge.builder("omni_connections_active", activeConnections, AtomicInteger::get)
