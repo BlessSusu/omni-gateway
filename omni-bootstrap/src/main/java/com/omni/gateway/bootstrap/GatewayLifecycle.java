@@ -14,15 +14,19 @@ public class GatewayLifecycle {
     private static final Logger log = LoggerFactory.getLogger(GatewayLifecycle.class);
 
     private final PortListenerManager portListenerManager;
+    private final OmniGatewayProperties properties;
 
-    public GatewayLifecycle(PortListenerManager portListenerManager) {
+    public GatewayLifecycle(PortListenerManager portListenerManager,
+                            OmniGatewayProperties properties) {
         this.portListenerManager = portListenerManager;
+        this.properties = properties;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void onReady() throws InterruptedException {
         portListenerManager.startAll();
-        log.info("OmniGateway started (Phase 1 MVP)");
+        log.info("OmniGateway started (Phase 1 MVP), protocol-hex-enabled={}",
+                properties.getLogging().isProtocolHexEnabled());
     }
 
     @PreDestroy

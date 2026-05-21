@@ -7,6 +7,7 @@ import com.omni.gateway.core.plugin.ProtocolPlugin;
 import com.omni.gateway.core.plugin.PluginRegistry;
 import com.omni.gateway.core.session.DeviceSession;
 import com.omni.gateway.core.downlink.DownlinkResultPublisher;
+import com.omni.gateway.network.logging.ConfigurableProtocolTrafficLog;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -24,13 +25,16 @@ public class DownlinkDispatcher {
     private final DownlinkResultPublisher resultPublisher;
     private final OmniMetrics metrics;
     private final ConcurrentHashMap<String, Long> processedMessages = new ConcurrentHashMap<>();
+    private final ConfigurableProtocolTrafficLog protocolTrafficLog;
 
     public DownlinkDispatcher(PluginRegistry pluginRegistry,
                               DownlinkResultPublisher resultPublisher,
-                              OmniMetrics metrics) {
+                              OmniMetrics metrics,
+                              ConfigurableProtocolTrafficLog protocolTrafficLog) {
         this.pluginRegistry = pluginRegistry;
         this.resultPublisher = resultPublisher;
         this.metrics = metrics;
+        this.protocolTrafficLog = protocolTrafficLog;
     }
 
     public void dispatch(DeviceSession session, CommandEnvelope cmd) {
@@ -68,6 +72,9 @@ public class DownlinkDispatcher {
         ByteBuf buf = encoded.get();
         channel.eventLoop().execute(() -> {
             try {
+                if (protocolTrafficLog != null && protocolTrafficLog.isEnabled()) {
+                    protocolTrafficLog.logSend(session, buf);
+                }
                 channel.writeAndFlush(buf);
                 if (plugin.downlinkAckMode() == ProtocolPlugin.DownlinkAckMode.FIRE_AND_FORGET) {
                     publish(cmd, DownlinkStatus.SUCCESS, "sent");

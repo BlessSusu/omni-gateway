@@ -69,6 +69,8 @@ omni:
     consumer-group: omni-gateway-downlink
   logging:
     json-enabled: true
+    # 完整协议帧十六进制流量日志（类似 SESSION/SN recv|send）；生产建议 false
+    protocol-hex-enabled: true
 
 logging:
   level:

@@ -3,6 +3,7 @@ package com.omni.gateway.protocol.jt808;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.omni.gateway.core.auth.AuthResult;
+import com.omni.gateway.core.logging.ProtocolTrafficLog;
 import com.omni.gateway.core.model.CommandEnvelope;
 import com.omni.gateway.core.model.ThingModel;
 import com.omni.gateway.core.plugin.ProtocolPlugin;
@@ -32,9 +33,11 @@ public class Jt808Plugin implements ProtocolPlugin {
             AttributeKey.valueOf("omni.jt808.registerSerial");
 
     private final OmniMetrics metrics;
+    private final ProtocolTrafficLog trafficLog;
 
-    public Jt808Plugin(OmniMetrics metrics) {
+    public Jt808Plugin(OmniMetrics metrics, ProtocolTrafficLog trafficLog) {
         this.metrics = metrics;
+        this.trafficLog = trafficLog;
     }
 
     @Override
@@ -54,7 +57,7 @@ public class Jt808Plugin implements ProtocolPlugin {
 
     @Override
     public List<ChannelHandler> createHandlers(DeviceSession session) {
-        return List.of(new Jt808Decoder(metrics));
+        return List.of(new Jt808Decoder(metrics, trafficLog));
     }
 
     @Override
@@ -72,6 +75,18 @@ public class Jt808Plugin implements ProtocolPlugin {
         session.setDeviceId(msg.getTerminalPhone());
         session.getChannel().attr(REGISTER_SERIAL).set(msg.getSerialNo());
         return AuthResult.OK;
+    }
+
+    @Override
+    public String describeInboundMessage(Object protocolMessage) {
+        if (!(protocolMessage instanceof Jt808Message msg)) {
+            return protocolMessage == null ? "null" : protocolMessage.getClass().getSimpleName();
+        }
+        String bodyHex = msg.getBody() != null && msg.getBody().length > 0
+                ? bytesToHex(msg.getBody()) : "";
+        return String.format("msgId=0x%04X phone=%s serial=%d bodyLen=%d bodyHex=%s",
+                msg.getMessageId(), msg.getTerminalPhone(), msg.getSerialNo(),
+                msg.getBodyLength(), bodyHex);
     }
 
     @Override

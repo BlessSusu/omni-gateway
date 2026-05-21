@@ -215,7 +215,10 @@ python tools\device_simulator.py --host 127.0.0.1 --port 9000 --device-id device
 
 1. 连接成功
 2. 收到 `auth_ok` 类响应（`type: auth_ok`）
-3. 周期性发送 `telemetry`
+3. 周期性发送 `telemetry`（**上行无 TCP 回包**，属正常；数据在 Kafka `omni.device.uplink`）
+4. 仅在有平台下行时，模拟器才打印 `<< downlink`；旧版若出现 `reader error: timed out` 为 socket 超时误报，请更新 `tools/device_simulator.py`
+
+网关日志应有 `Device authenticated`；Kafka 正常时可用 Prometheus `omni_messages_uplink_total` 或终端 B 消费 Topic 验证上行。
 
 **终端 B — 消费上行 Topic**
 
@@ -331,6 +334,25 @@ python tools\loadtest\pt02_uplink_throughput.py --devices 20 --duration-sec 30
 | `omni.kafka.enabled` | `true` | 是否发 Kafka |
 | `omni.gateway.listeners[].port` | 9000 / 9001 | TCP 监听 |
 | `omni.downlink.topic` | `omni.command.downlink` | 下行 Topic |
+| `omni.logging.protocol-hex-enabled` | `false` | 是否打印完整协议帧十六进制（见下） |
+
+### 协议十六进制流量日志
+
+开启后，每条设备 **recv/send** 会输出一行（logger：`com.omni.gateway.protocol.traffic`），格式类似：
+
+```text
+2026-05-20 17:55:02.482 --- SESSION: 44d4e18ce9874b4ea985794b3deacf86 SN: device-001 recv 4F 4D 4E 49 ...
+```
+
+```yaml
+omni:
+  logging:
+    protocol-hex-enabled: true   # 调试抓包对照时打开；生产建议 false
+```
+
+也可通过外部热更文件 `omni.logging.protocol-hex-enabled` 动态开关（`GatewayConfigRefreshService` 会刷新 Properties，新连接立即生效）。
+
+关闭时 **不打印** 上述十六进制行，且不解码复制原始帧（零额外开销）。
 
 覆盖配置（无需改 jar 内文件）：
 

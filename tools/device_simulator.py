@@ -57,26 +57,32 @@ def main():
     args = p.parse_args()
 
     sock = socket.create_connection((args.host, args.port), timeout=10)
+    # 鉴权后取消全局超时：上行 telemetry 无 TCP 回包，读线程只等服务端下行
+    sock.settimeout(None)
     print(f"connected {args.host}:{args.port}")
 
     sock.sendall(encode_frame({"type": "auth", "deviceId": args.device_id}))
     resp = read_frame(sock)
     print("auth response:", resp)
 
+    stop_reader = threading.Event()
+
     def reader():
-        while True:
+        while not stop_reader.is_set():
             try:
                 msg = read_frame(sock)
                 if msg is None:
                     break
-                print("<<", msg)
+                print("<< downlink", msg)
                 if msg.get("messageId"):
                     sock.sendall(encode_frame({
                         "type": "ack",
                         "messageId": msg["messageId"],
                     }))
-            except Exception as e:
-                print("reader error:", e)
+                    print(">> ack", msg["messageId"])
+            except OSError as e:
+                if not stop_reader.is_set():
+                    print("reader stopped:", e)
                 break
 
     threading.Thread(target=reader, daemon=True).start()
@@ -87,10 +93,17 @@ def main():
             "type": "telemetry",
             "payload": {"seq": i, "temp": 20 + i},
         }))
-        print(">> telemetry", i)
+        print(">> telemetry", i, "(no TCP reply; check Kafka topic omni.device.uplink)")
 
-    time.sleep(30)
-    sock.close()
+    print("waiting for downlink (Ctrl+C to exit)...")
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop_reader.set()
+        sock.close()
 
 
 if __name__ == "__main__":

@@ -19,6 +19,7 @@ public class OmniGatewayProperties {
     private Security security = new Security();
     private Config config = new Config();
     private Backpressure backpressure = new Backpressure();
+    private Logging logging = new Logging();
 
     public GatewayConfigSnapshot toSnapshot() {
         GatewayConfigSnapshot snap = new GatewayConfigSnapshot();
@@ -103,6 +104,36 @@ public class OmniGatewayProperties {
 
     public void setBackpressure(Backpressure backpressure) {
         this.backpressure = backpressure;
+    }
+
+    public Logging getLogging() {
+        return logging;
+    }
+
+    public void setLogging(Logging logging) {
+        this.logging = logging;
+    }
+
+    public static class Logging {
+        /** 是否打印完整协议帧十六进制（recv/send 流量日志） */
+        private boolean protocolHexEnabled = false;
+        private boolean jsonEnabled = true;
+
+        public boolean isProtocolHexEnabled() {
+            return protocolHexEnabled;
+        }
+
+        public void setProtocolHexEnabled(boolean protocolHexEnabled) {
+            this.protocolHexEnabled = protocolHexEnabled;
+        }
+
+        public boolean isJsonEnabled() {
+            return jsonEnabled;
+        }
+
+        public void setJsonEnabled(boolean jsonEnabled) {
+            this.jsonEnabled = jsonEnabled;
+        }
     }
 
     public static class Gateway {

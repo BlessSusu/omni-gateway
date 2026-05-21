@@ -72,6 +72,12 @@ python tools\device_simulator.py
 }
 ```
 
+## Java 示例（设备 + 业务 Kafka）
+
+最小可运行骨架：[examples/omni-java-skeleton](examples/omni-java-skeleton/README.md)（含 simple-frame / JT808 设备端）
+
+网关收到设备报文时会打 `Protocol recv` / `Uplink parsed` 日志（见 `UplinkDispatchHandler`）。
+
 ## 模块
 
 | 模块 | 说明 |

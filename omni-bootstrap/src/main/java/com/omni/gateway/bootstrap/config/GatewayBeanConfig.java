@@ -8,8 +8,10 @@ import com.omni.gateway.core.plugin.PluginRegistry;
 import com.omni.gateway.core.plugin.ProtocolPlugin;
 import com.omni.gateway.core.session.SessionRegistry;
 import com.omni.gateway.network.backpressure.DefaultBackpressureController;
+import com.omni.gateway.core.logging.ProtocolTrafficLog;
 import com.omni.gateway.network.downlink.DownlinkDispatcher;
 import com.omni.gateway.network.downlink.DeviceSerialExecutor;
+import com.omni.gateway.network.logging.ConfigurableProtocolTrafficLog;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import com.omni.gateway.network.server.PortListenerManager;
 import com.omni.gateway.network.session.InMemorySessionRegistry;
@@ -36,19 +38,24 @@ public class GatewayBeanConfig {
     }
 
     @Bean
+    public ConfigurableProtocolTrafficLog protocolTrafficLog(OmniGatewayProperties properties) {
+        return new ConfigurableProtocolTrafficLog(() -> properties.getLogging().isProtocolHexEnabled());
+    }
+
+    @Bean
     public BackpressureController backpressureController(AtomicReference<GatewayConfigSnapshot> configRef,
                                                        OmniMetrics metrics) {
         return new DefaultBackpressureController(configRef::get, metrics);
     }
 
     @Bean
-    public SimpleFramePlugin simpleFramePlugin(OmniMetrics metrics) {
-        return new SimpleFramePlugin(metrics);
+    public SimpleFramePlugin simpleFramePlugin(OmniMetrics metrics, ProtocolTrafficLog protocolTrafficLog) {
+        return new SimpleFramePlugin(metrics, protocolTrafficLog);
     }
 
     @Bean
-    public Jt808Plugin jt808Plugin(OmniMetrics metrics) {
-        return new Jt808Plugin(metrics);
+    public Jt808Plugin jt808Plugin(OmniMetrics metrics, ProtocolTrafficLog protocolTrafficLog) {
+        return new Jt808Plugin(metrics, protocolTrafficLog);
     }
 
     @Bean
@@ -69,8 +76,9 @@ public class GatewayBeanConfig {
     @Bean
     public DownlinkDispatcher downlinkDispatcher(PluginRegistry pluginRegistry,
                                                  com.omni.gateway.bootstrap.kafka.KafkaDownlinkResultPublisher resultPublisher,
-                                                 OmniMetrics metrics) {
-        return new DownlinkDispatcher(pluginRegistry, resultPublisher, metrics);
+                                                 OmniMetrics metrics,
+                                                 ConfigurableProtocolTrafficLog protocolTrafficLog) {
+        return new DownlinkDispatcher(pluginRegistry, resultPublisher, metrics, protocolTrafficLog);
     }
 
     @Bean
@@ -81,10 +89,11 @@ public class GatewayBeanConfig {
                                                    OmniMetrics metrics,
                                                    OmniGatewayProperties properties,
                                                    BackpressureController backpressure,
-                                                   DeviceLifecyclePublisher lifecyclePublisher) {
+                                                   DeviceLifecyclePublisher lifecyclePublisher,
+                                                   ConfigurableProtocolTrafficLog protocolTrafficLog) {
         return new PortListenerManager(
                 configRef, pluginRegistry, sessionRegistry,
                 uplinkPublisher, metrics, properties.getNodeId(),
-                backpressure, lifecyclePublisher);
+                backpressure, lifecyclePublisher, protocolTrafficLog);
     }
 }

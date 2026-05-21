@@ -12,8 +12,11 @@ import com.omni.gateway.core.uplink.UplinkPublisher;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import com.omni.gateway.network.security.ConnectionRateLimitHandler;
 import com.omni.gateway.network.security.IpAccessHandler;
+import com.omni.gateway.network.logging.ConfigurableProtocolTrafficLog;
 import com.omni.gateway.network.sniff.PipelineBinder;
 import com.omni.gateway.network.sniff.SniffHandler;
+
+import java.util.UUID;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
@@ -38,6 +41,7 @@ public class GatewayChannelInitializer extends ChannelInitializer<SocketChannel>
     private final ConnectionRateLimitHandler rateLimitHandler;
     private final ConnectionLifecycleHandler lifecycleHandler;
     private final UplinkDispatchHandler uplinkDispatchHandler;
+    private final ConfigurableProtocolTrafficLog protocolTrafficLog;
     private final PipelineBinder pipelineBinder = new PipelineBinder();
 
     public GatewayChannelInitializer(int port,
@@ -48,7 +52,8 @@ public class GatewayChannelInitializer extends ChannelInitializer<SocketChannel>
                                      OmniMetrics metrics,
                                      String gatewayNodeId,
                                      BackpressureController backpressure,
-                                     DeviceLifecyclePublisher lifecyclePublisher) {
+                                     DeviceLifecyclePublisher lifecyclePublisher,
+                                     ConfigurableProtocolTrafficLog protocolTrafficLog) {
         this.port = port;
         this.configRef = configRef;
         this.pluginRegistry = pluginRegistry;
@@ -63,9 +68,10 @@ public class GatewayChannelInitializer extends ChannelInitializer<SocketChannel>
         this.rateLimitHandler = new ConnectionRateLimitHandler(configSupplier, metrics);
         this.lifecycleHandler = new ConnectionLifecycleHandler(
                 sessionRegistry, metrics, backpressure, lifecyclePublisher);
+        this.protocolTrafficLog = protocolTrafficLog;
         this.uplinkDispatchHandler = new UplinkDispatchHandler(
                 pluginRegistry, sessionRegistry, uplinkPublisher, metrics,
-                gatewayNodeId, backpressure, lifecyclePublisher);
+                gatewayNodeId, backpressure, lifecyclePublisher, protocolTrafficLog);
     }
 
     @Override
@@ -78,6 +84,7 @@ public class GatewayChannelInitializer extends ChannelInitializer<SocketChannel>
         ch.attr(ChannelAttributes.SESSION).set(session);
         ch.attr(ChannelAttributes.LOCAL_PORT).set(port);
         ch.attr(ChannelAttributes.AUTHENTICATED).set(false);
+        ch.attr(ChannelAttributes.TRACE_SESSION_ID).set(UUID.randomUUID().toString().replace("-", ""));
 
         var pipeline = ch.pipeline();
         pipeline.addLast("ip-access", ipAccessHandler);

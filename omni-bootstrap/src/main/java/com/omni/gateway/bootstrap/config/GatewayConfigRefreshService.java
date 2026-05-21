@@ -64,6 +64,7 @@ public class GatewayConfigRefreshService {
             if (omni instanceof Map<?, ?> omniMap) {
                 applyGatewayMap((Map<String, Object>) omniMap.get("gateway"));
                 applySecurityMap((Map<String, Object>) omniMap.get("security"));
+                applyLoggingMap((Map<String, Object>) omniMap.get("logging"));
             }
             lastModified.set(mod);
             return refreshFromProperties();
@@ -98,6 +99,18 @@ public class GatewayConfigRefreshService {
         }
         if (security.get("connection-rate-per-ip") instanceof Number n) {
             properties.getSecurity().setConnectionRatePerIp(n.intValue());
+        }
+    }
+
+    private void applyLoggingMap(Map<String, Object> logging) {
+        if (logging == null) {
+            return;
+        }
+        if (logging.get("protocol-hex-enabled") instanceof Boolean b) {
+            properties.getLogging().setProtocolHexEnabled(b);
+        }
+        if (logging.get("json-enabled") instanceof Boolean b) {
+            properties.getLogging().setJsonEnabled(b);
         }
     }
 

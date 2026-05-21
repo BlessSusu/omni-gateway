@@ -8,6 +8,7 @@ import com.omni.gateway.core.backpressure.BackpressureController;
 import com.omni.gateway.core.lifecycle.DeviceLifecyclePublisher;
 import com.omni.gateway.core.uplink.UplinkPublisher;
 import com.omni.gateway.network.handler.GatewayChannelInitializer;
+import com.omni.gateway.network.logging.ConfigurableProtocolTrafficLog;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -34,6 +35,7 @@ public class PortListenerManager {
     private final String gatewayNodeId;
     private final BackpressureController backpressure;
     private final DeviceLifecyclePublisher lifecyclePublisher;
+    private final ConfigurableProtocolTrafficLog protocolTrafficLog;
 
     private final EventLoopGroup bossGroup = new NioEventLoopGroup(1);
     private final EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -46,7 +48,8 @@ public class PortListenerManager {
                                OmniMetrics metrics,
                                String gatewayNodeId,
                                BackpressureController backpressure,
-                               DeviceLifecyclePublisher lifecyclePublisher) {
+                               DeviceLifecyclePublisher lifecyclePublisher,
+                               ConfigurableProtocolTrafficLog protocolTrafficLog) {
         this.configRef = configRef;
         this.pluginRegistry = pluginRegistry;
         this.sessionRegistry = sessionRegistry;
@@ -55,6 +58,7 @@ public class PortListenerManager {
         this.gatewayNodeId = gatewayNodeId;
         this.backpressure = backpressure;
         this.lifecyclePublisher = lifecyclePublisher;
+        this.protocolTrafficLog = protocolTrafficLog;
     }
 
     public void startAll() throws InterruptedException {
@@ -74,7 +78,7 @@ public class PortListenerManager {
                 .childHandler(new GatewayChannelInitializer(
                         port, configRef, pluginRegistry, sessionRegistry,
                         uplinkPublisher, metrics, gatewayNodeId,
-                        backpressure, lifecyclePublisher));
+                        backpressure, lifecyclePublisher, protocolTrafficLog));
 
         ChannelFuture future = bootstrap.bind(port).sync();
         serverChannels.put(port, future.channel());

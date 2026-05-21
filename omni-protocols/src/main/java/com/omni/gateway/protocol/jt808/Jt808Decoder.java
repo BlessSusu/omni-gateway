@@ -1,5 +1,8 @@
 package com.omni.gateway.protocol.jt808;
 
+import com.omni.gateway.core.ChannelAttributes;
+import com.omni.gateway.core.logging.ProtocolTrafficLog;
+import com.omni.gateway.core.session.DeviceSession;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -10,9 +13,11 @@ import java.util.List;
 public class Jt808Decoder extends ByteToMessageDecoder {
 
     private final OmniMetrics metrics;
+    private final ProtocolTrafficLog trafficLog;
 
-    public Jt808Decoder(OmniMetrics metrics) {
+    public Jt808Decoder(OmniMetrics metrics, ProtocolTrafficLog trafficLog) {
         this.metrics = metrics;
+        this.trafficLog = trafficLog;
     }
 
     @Override
@@ -27,6 +32,12 @@ public class Jt808Decoder extends ByteToMessageDecoder {
             if (msg == null) {
                 in.readerIndex(readerBefore);
                 return;
+            }
+            if (trafficLog != null && trafficLog.isEnabled() && msg.getRawFrame() != null) {
+                DeviceSession session = ctx.channel().attr(ChannelAttributes.SESSION).get();
+                String sn = msg.getTerminalPhone() != null ? msg.getTerminalPhone()
+                        : (session != null ? session.getDeviceId() : null);
+                trafficLog.logRecv(ctx.channel(), sn, msg.getRawFrame());
             }
             out.add(msg);
         }

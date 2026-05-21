@@ -11,6 +11,7 @@ import com.omni.gateway.core.plugin.PluginRegistry;
 import com.omni.gateway.core.session.DeviceSession;
 import com.omni.gateway.core.session.SessionRegistry;
 import com.omni.gateway.core.uplink.UplinkPublisher;
+import com.omni.gateway.network.logging.ConfigurableProtocolTrafficLog;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandler;
@@ -33,6 +34,7 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
     private final String gatewayNodeId;
     private final BackpressureController backpressure;
     private final DeviceLifecyclePublisher lifecyclePublisher;
+    private final ConfigurableProtocolTrafficLog protocolTrafficLog;
 
     public UplinkDispatchHandler(PluginRegistry pluginRegistry,
                                  SessionRegistry sessionRegistry,
@@ -40,7 +42,8 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
                                  OmniMetrics metrics,
                                  String gatewayNodeId,
                                  BackpressureController backpressure,
-                                 DeviceLifecyclePublisher lifecyclePublisher) {
+                                 DeviceLifecyclePublisher lifecyclePublisher,
+                                 ConfigurableProtocolTrafficLog protocolTrafficLog) {
         this.pluginRegistry = pluginRegistry;
         this.sessionRegistry = sessionRegistry;
         this.uplinkPublisher = uplinkPublisher;
@@ -48,6 +51,7 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
         this.gatewayNodeId = gatewayNodeId;
         this.backpressure = backpressure;
         this.lifecyclePublisher = lifecyclePublisher;
+        this.protocolTrafficLog = protocolTrafficLog;
     }
 
     @Override
@@ -64,6 +68,7 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
         }
 
         session.touch();
+        logProtocolReceived(protocolId, session, plugin, msg, "recv");
         Boolean authenticated = ctx.channel().attr(ChannelAttributes.AUTHENTICATED).get();
         if (authenticated == null || !authenticated) {
             AuthResult auth = plugin.authenticate(session, msg);
@@ -90,12 +95,15 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
             log.info("Device authenticated");
             OmniMdc.clear();
 
-            plugin.buildAuthSuccessResponse(session).ifPresent(ctx::writeAndFlush);
+            plugin.buildAuthSuccessResponse(session).ifPresent(buf -> {
+                logAuthDownlinkSend(session, protocolId, buf);
+                ctx.writeAndFlush(buf);
+            });
             return;
         }
 
         if (plugin.matchDownlinkAck(session, msg)) {
-            // Process device ACK (e.g. PendingAckRegistry) without uplink publish.
+            logProtocolReceived(protocolId, session, plugin, msg, "downlink_ack");
             plugin.toThingModel(session, msg);
             return;
         }
@@ -107,6 +115,8 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
 
         ThingModel thing = thingOpt.get();
         thing.setGatewayNodeId(gatewayNodeId);
+        log.info("Uplink parsed protocol={} deviceId={} messageType={} payload={}",
+                protocolId, thing.getDeviceId(), thing.getMessageType(), thing.getPayload());
         OmniMdc.bindDevice(session.getDeviceId(), protocolId, session.getChannelId());
         OmniMdc.event("uplink_publish");
         backpressure.beforeUplinkPublish(ctx.channel());
@@ -122,5 +132,24 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
                     }
                     OmniMdc.clear();
                 });
+    }
+
+    private static void logProtocolReceived(String protocolId,
+                                            DeviceSession session,
+                                            ProtocolPlugin plugin,
+                                            Object msg,
+                                            String phase) {
+        String deviceId = session.getDeviceId() != null ? session.getDeviceId() : "-";
+        OmniMdc.bindDevice(deviceId, protocolId, session.getChannelId());
+        OmniMdc.event("protocol_" + phase);
+        log.info("Protocol {} protocol={} deviceId={} channelId={} detail={}",
+                phase, protocolId, deviceId, session.getChannelId(), plugin.describeInboundMessage(msg));
+        OmniMdc.clear();
+    }
+
+    private void logAuthDownlinkSend(DeviceSession session, String protocolId, ByteBuf buf) {
+        if (protocolTrafficLog != null && protocolTrafficLog.isEnabled()) {
+            protocolTrafficLog.logSend(session, buf);
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.omni.gateway.protocol.simpleframe;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.omni.gateway.core.auth.AuthResult;
+import com.omni.gateway.core.logging.ProtocolTrafficLog;
 import com.omni.gateway.core.model.CommandEnvelope;
 import com.omni.gateway.core.model.ThingModel;
 import com.omni.gateway.core.plugin.ProtocolPlugin;
@@ -19,9 +20,11 @@ public class SimpleFramePlugin implements ProtocolPlugin {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final OmniMetrics metrics;
+    private final ProtocolTrafficLog trafficLog;
 
-    public SimpleFramePlugin(OmniMetrics metrics) {
+    public SimpleFramePlugin(OmniMetrics metrics, ProtocolTrafficLog trafficLog) {
         this.metrics = metrics;
+        this.trafficLog = trafficLog;
     }
 
     @Override
@@ -41,7 +44,7 @@ public class SimpleFramePlugin implements ProtocolPlugin {
 
     @Override
     public List<ChannelHandler> createHandlers(DeviceSession session) {
-        return List.of(new SimpleFrameDecoder(metrics));
+        return List.of(new SimpleFrameDecoder(metrics, trafficLog));
     }
 
     @Override
@@ -57,6 +60,17 @@ public class SimpleFramePlugin implements ProtocolPlugin {
         }
         session.setDeviceId(msg.getDeviceId().trim());
         return AuthResult.OK;
+    }
+
+    @Override
+    public String describeInboundMessage(Object protocolMessage) {
+        if (!(protocolMessage instanceof SimpleFrameMessage msg)) {
+            return protocolMessage == null ? "null" : protocolMessage.getClass().getSimpleName();
+        }
+        return "type=" + msg.getType()
+                + " deviceId=" + msg.getDeviceId()
+                + " messageId=" + msg.getMessageId()
+                + " payload=" + (msg.getPayload() != null ? msg.getPayload().toString() : "null");
     }
 
     @Override

@@ -25,6 +25,8 @@
     </springProfile>
 
     <logger name="com.omni.gateway" level="INFO"/>
+    <!-- 协议十六进制流量：消息体为纯文本行，便于对照抓包 -->
+    <logger name="com.omni.gateway.protocol.traffic" level="INFO" additivity="true"/>
     <logger name="io.netty" level="WARN"/>
     <logger name="org.apache.kafka" level="WARN"/>
 

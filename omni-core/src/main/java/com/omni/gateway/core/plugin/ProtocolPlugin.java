@@ -30,6 +30,16 @@ public interface ProtocolPlugin {
 
     Optional<ThingModel> toThingModel(DeviceSession session, Object protocolMessage);
 
+    /**
+     * 供网关日志打印收到的协议对象（插件自行格式化字段）。
+     */
+    default String describeInboundMessage(Object protocolMessage) {
+        if (protocolMessage == null) {
+            return "null";
+        }
+        return protocolMessage.getClass().getSimpleName();
+    }
+
     Optional<ByteBuf> encodeDownlink(DeviceSession session, CommandEnvelope command);
 
     /**

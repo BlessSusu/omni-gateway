@@ -4,13 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 
-import java.nio.charset.StandardCharsets;
-
 public final class SimpleFrameCodec {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private SimpleFrameCodec() {
+    }
+
+    public record FramePacket(SimpleFrameMessage message, byte[] rawFrame) {
     }
 
     public static boolean detect(ByteBuf buffer) {
@@ -26,9 +27,15 @@ public final class SimpleFrameCodec {
     }
 
     public static SimpleFrameMessage decodeFrame(ByteBuf in) throws Exception {
+        FramePacket packet = decodeFramePacket(in);
+        return packet != null ? packet.message() : null;
+    }
+
+    public static FramePacket decodeFramePacket(ByteBuf in) throws Exception {
         if (in.readableBytes() < 7) {
             return null;
         }
+        int frameStart = in.readerIndex();
         for (int i = 0; i < 4; i++) {
             if (in.readByte() != SimpleFrameConstants.MAGIC[i]) {
                 throw new IllegalArgumentException("bad magic");
@@ -36,7 +43,7 @@ public final class SimpleFrameCodec {
         }
         int bodyLen = in.readUnsignedShort();
         if (in.readableBytes() < bodyLen + 1) {
-            in.readerIndex(in.readerIndex() - 6);
+            in.readerIndex(frameStart);
             return null;
         }
         byte[] body = new byte[bodyLen];
@@ -46,7 +53,11 @@ public final class SimpleFrameCodec {
         if (checksum != expected) {
             throw new IllegalArgumentException("checksum mismatch");
         }
-        return MAPPER.readValue(body, SimpleFrameMessage.class);
+        int frameEnd = in.readerIndex();
+        byte[] raw = new byte[frameEnd - frameStart];
+        in.getBytes(frameStart, raw);
+        SimpleFrameMessage msg = MAPPER.readValue(body, SimpleFrameMessage.class);
+        return new FramePacket(msg, raw);
     }
 
     public static ByteBuf encodeFrame(io.netty.buffer.ByteBufAllocator alloc, SimpleFrameMessage msg) throws Exception {
@@ -57,6 +68,17 @@ public final class SimpleFrameCodec {
         out.writeBytes(body);
         out.writeByte(xorChecksum(SimpleFrameConstants.MAGIC, body));
         return out;
+    }
+
+    public static byte[] encodeFrameBytes(SimpleFrameMessage msg) throws Exception {
+        byte[] body = MAPPER.writeValueAsBytes(msg);
+        byte[] raw = new byte[7 + body.length];
+        System.arraycopy(SimpleFrameConstants.MAGIC, 0, raw, 0, 4);
+        raw[4] = (byte) (body.length >> 8);
+        raw[5] = (byte) body.length;
+        System.arraycopy(body, 0, raw, 6, body.length);
+        raw[raw.length - 1] = xorChecksum(SimpleFrameConstants.MAGIC, body);
+        return raw;
     }
 
     public static ByteBuf encodeCommand(io.netty.buffer.ByteBufAllocator alloc,

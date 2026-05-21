@@ -1,5 +1,8 @@
 package com.omni.gateway.protocol.simpleframe;
 
+import com.omni.gateway.core.ChannelAttributes;
+import com.omni.gateway.core.logging.ProtocolTrafficLog;
+import com.omni.gateway.core.session.DeviceSession;
 import com.omni.gateway.network.metrics.OmniMetrics;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
@@ -10,9 +13,11 @@ import java.util.List;
 public class SimpleFrameDecoder extends ByteToMessageDecoder {
 
     private final OmniMetrics metrics;
+    private final ProtocolTrafficLog trafficLog;
 
-    public SimpleFrameDecoder(OmniMetrics metrics) {
+    public SimpleFrameDecoder(OmniMetrics metrics, ProtocolTrafficLog trafficLog) {
         this.metrics = metrics;
+        this.trafficLog = trafficLog;
     }
 
     @Override
@@ -24,10 +29,20 @@ public class SimpleFrameDecoder extends ByteToMessageDecoder {
                     in.resetReaderIndex();
                     return;
                 }
-                SimpleFrameMessage msg = SimpleFrameCodec.decodeFrame(in);
+                boolean hexLog = trafficLog != null && trafficLog.isEnabled();
+                SimpleFrameCodec.FramePacket packet = hexLog ? SimpleFrameCodec.decodeFramePacket(in) : null;
+                SimpleFrameMessage msg = packet != null
+                        ? packet.message()
+                        : SimpleFrameCodec.decodeFrame(in);
                 if (msg == null) {
                     in.resetReaderIndex();
                     return;
+                }
+                if (packet != null) {
+                    DeviceSession session = ctx.channel().attr(ChannelAttributes.SESSION).get();
+                    String sn = msg.getDeviceId() != null ? msg.getDeviceId()
+                            : (session != null ? session.getDeviceId() : null);
+                    trafficLog.logRecv(ctx.channel(), sn, packet.rawFrame());
                 }
                 out.add(msg);
             } catch (Exception e) {

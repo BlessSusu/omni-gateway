@@ -15,6 +15,9 @@ public final class ChannelAttributes {
             AttributeKey.valueOf("omni.authenticated");
     public static final AttributeKey<Integer> UPLINK_PENDING =
             AttributeKey.valueOf("omni.uplinkPending");
+    /** 协议流量日志用会话 ID（32 位十六进制，无连字符） */
+    public static final AttributeKey<String> TRACE_SESSION_ID =
+            AttributeKey.valueOf("omni.traceSessionId");
 
     private ChannelAttributes() {
     }

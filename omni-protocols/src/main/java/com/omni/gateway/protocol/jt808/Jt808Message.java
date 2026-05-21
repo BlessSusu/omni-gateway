@@ -7,6 +7,8 @@ public class Jt808Message {
     private String terminalPhone;
     private int serialNo;
     private byte[] body;
+    /** 线上原始帧（含 0x7E 界符），供协议流量日志使用 */
+    private byte[] rawFrame;
 
     public int getMessageId() {
         return messageId;
@@ -46,5 +48,13 @@ public class Jt808Message {
 
     public void setBody(byte[] body) {
         this.body = body;
+    }
+
+    public byte[] getRawFrame() {
+        return rawFrame;
+    }
+
+    public void setRawFrame(byte[] rawFrame) {
+        this.rawFrame = rawFrame;
     }
 }

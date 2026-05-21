@@ -5,3 +5,5 @@ omni:
     reader-idle-seconds: 180
   security:
     connection-rate-per-ip: 30
+  logging:
+    protocol-hex-enabled: true

@@ -29,6 +29,7 @@ public final class Jt808Codec {
         if (end < 0) {
             return null;
         }
+        int frameEndInclusive = end + 1;
         int escapedLen = end - start - 1;
         if (escapedLen < 12) {
             in.readerIndex(end + 1);
@@ -62,7 +63,10 @@ public final class Jt808Codec {
             System.arraycopy(raw, 12, body, 0, bodyLen);
             msg.setBody(body);
         }
-        in.readerIndex(end + 1);
+        byte[] onWire = new byte[frameEndInclusive - start];
+        in.getBytes(start, onWire);
+        msg.setRawFrame(onWire);
+        in.readerIndex(frameEndInclusive);
         return msg;
     }
 
