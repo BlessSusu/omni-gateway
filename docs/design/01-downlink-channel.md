@@ -2,9 +2,11 @@
 
 | 属性 | 值 |
 |------|-----|
-| 状态 | **待确认** |
+| 状态 | **已实现**（Phase 1～3） |
 | 依赖模块 | omni-core, omni-network, omni-bootstrap |
 | 关联设计 | [02-horizontal-scaling](./02-horizontal-scaling.md) |
+
+**第三期扩展**（已实现）：离线下发 `PendingDownlinkStore`（result `queued_pending`）、广播 Topic `omni.command.downlink.broadcast`。见 [PHASE3.md](../PHASE3.md)。
 
 ---
 

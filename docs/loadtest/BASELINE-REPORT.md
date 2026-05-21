@@ -1,4 +1,4 @@
-# OmniGateway 第一期压测基线报告
+# OmniGateway 压测基线报告
 
 | 项 | 值 |
 |----|-----|
@@ -6,6 +6,8 @@
 | 版本 | 1.0.0-SNAPSHOT |
 | 环境 | _CPU / 内存 / JDK / 节点数_ |
 | 执行人 | _填写_ |
+
+**脚本索引**：[design/README.md](../design/README.md#压测脚本索引)。容量压测优先使用 **PT-07**（`tools/loadtest/pt07_device_capacity.py`）。
 
 ## 1. 压测环境
 

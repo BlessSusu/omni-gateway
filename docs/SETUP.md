@@ -156,17 +156,29 @@ java -jar omni-bootstrap\target\omni-bootstrap-1.0.0-SNAPSHOT.jar
 
 - `TCP listener started on port 9000`
 - `TCP listener started on port 9001`
-- `OmniGateway started (Phase 1 MVP)`
+- `TCP listener started on port 5060`（GB28181，第三期）
+- Spring Boot 启动完成（无 `Failed to extract parameter names` 等 Actuator 错误）
 
 ### 4.3 端口说明
 
-| 端口 | 协议 |
-|------|------|
+| 端口 | 协议 / 用途 |
+|------|-------------|
 | **9000** | simple-frame + JT808（嗅探区分） |
 | **9001** | 仅 JT808 |
-| **8080** | HTTP 管理（Actuator） |
+| **5060** | GB28181（SIP over TCP） |
+| **8080** | HTTP：Actuator + 控制面 API（第三期） |
 
-### 4.4 仅测 TCP、不连 Kafka（可选）
+### 4.4 IDEA / 本地运行注意
+
+第三期起使用 `spring-boot-starter-web`。若启动报：
+
+```text
+Failed to extract parameter names for ... OmniDrainEndpoint.drain
+```
+
+处理：根目录执行 `mvn compile -pl omni-bootstrap -am`，并在 IDEA **Rebuild Project**；或在 **Java Compiler → Additional command line parameters** 添加 `-parameters`（与根 `pom.xml` 中 `parameters=true` 一致）。
+
+### 4.5 仅测 TCP、不连 Kafka（可选）
 
 临时关闭 Kafka，避免本地未装 Kafka 时报错：
 
@@ -192,6 +204,10 @@ curl http://localhost:8080/actuator/prometheus
 
 # 当前配置版本
 curl http://localhost:8080/actuator/omniconfig
+
+# 第三期：设备路由（需 redis-enabled）
+curl http://localhost:8080/api/v1/devices/device-001/route
+curl http://localhost:8080/api/v1/devices/device-001/session
 ```
 
 浏览器可访问：http://localhost:8080/actuator/health
@@ -312,15 +328,17 @@ curl http://localhost:8080/actuator/prometheus | findstr omni_messages_uplink
 
 ### 6.4 压测脚本（可选）
 
-```powershell
-# 长连接
-python tools\loadtest\pt01_hold_connections.py --connections 100 --duration-sec 60
+| 编号 | 命令 | 说明 |
+|------|------|------|
+| PT-01 | `python tools\loadtest\pt01_hold_connections.py --connections 100 --duration-sec 60` | 长连接 |
+| PT-02 | `python tools\loadtest\pt02_uplink_throughput.py --devices 20 --duration-sec 30` | 上行吞吐 |
+| PT-03 | `python tools\loadtest\pt03_downlink_routing.py --device-id ... --node-id local-8080` | 分节点下行 |
+| PT-06 | `python tools\loadtest\pt06_rolling_restart.py` | drain 滚动 |
+| PT-07 | `python tools\loadtest\pt07_device_capacity.py --connections 1000 --metrics-url http://127.0.0.1:8080/actuator/prometheus` | **容量压测（推荐填基线表）** |
 
-# 上行吞吐（需 Kafka 正常）
-python tools\loadtest\pt02_uplink_throughput.py --devices 20 --duration-sec 30
-```
+PT-07 默认建连速率 40/s，低于 `connection-rate-per-ip`（50），避免单机压测被限流。
 
-压测结果记录模板：[loadtest/BASELINE-REPORT.md](loadtest/BASELINE-REPORT.md)
+压测结果记录：[loadtest/BASELINE-REPORT.md](loadtest/BASELINE-REPORT.md)
 
 ---
 
@@ -328,13 +346,21 @@ python tools\loadtest\pt02_uplink_throughput.py --devices 20 --duration-sec 30
 
 主配置：`omni-bootstrap/src/main/resources/application.yml`
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `omni.kafka.bootstrap-servers` | `localhost:9092` | Kafka 地址 |
+| 配置项 | 默认值（示例） | 说明 |
+|--------|----------------|------|
+| `omni.kafka.bootstrap-servers` | 见 `application.yml` | Kafka 地址 |
 | `omni.kafka.enabled` | `true` | 是否发 Kafka |
-| `omni.gateway.listeners[].port` | 9000 / 9001 | TCP 监听 |
-| `omni.downlink.topic` | `omni.command.downlink` | 下行 Topic |
-| `omni.logging.protocol-hex-enabled` | `false` | 是否打印完整协议帧十六进制（见下） |
+| `omni.node-id` | `local-8080` | 节点 ID，影响下行 Topic 后缀 |
+| `omni.gateway.listeners[].port` | 9000 / 9001 / **5060** | TCP 监听 |
+| `omni.session.redis-enabled` | `true` | Redis 会话索引 |
+| `spring.data.redis.host` | `${REDIS_HOST:...}` | Redis 地址 |
+| `omni.downlink.topic` | `omni.command.downlink` | 统一下行（迁移期） |
+| `omni.downlink.node-topic-pattern` | `omni.command.downlink.{nodeId}` | **推荐** 分节点下行 |
+| `omni.downlink.pending-enabled` | `true` | 离线下发队列（需 Redis） |
+| `omni.downlink.broadcast-enabled` | `true` | 广播 Consumer |
+| `omni.nacos.enabled` | `false` | Nacos 配置拉取 |
+| `omni.api.enabled` | `true` | REST 控制面 API |
+| `omni.logging.protocol-hex-enabled` | 见 yml | 协议帧十六进制日志 |
 
 ### 协议十六进制流量日志
 
@@ -454,16 +480,34 @@ mvn test
 
 ### 第三期能力（M19～M22）
 
-- **离线下发**：`omni.downlink.pending-enabled: true`（需 Redis）
-- **广播**：Topic `omni.command.downlink.broadcast`，`broadcast-enabled: true`
-- **路由 API**：`GET http://localhost:8080/api/v1/devices/{deviceId}/route`
+- **离线下发**：`omni.downlink.pending-enabled: true`（需 Redis）；离线 result 为 `queued_pending`，上线自动补发
+- **广播**：Topic `omni.command.downlink.broadcast`；消息体为 `CommandEnvelope`，可选 `filterProtocol`、`deviceIds`
+- **路由 API**：`GET /api/v1/devices/{deviceId}/route`、`/session`
 - **Nacos**：`omni.nacos.enabled: true` 后定时拉取 `omni-gateway.yaml`
+
+**广播下行示例**（发到 `omni.command.downlink.broadcast`）：
+
+```json
+{
+  "messageId": "bc-001",
+  "protocol": "simple-frame",
+  "commandType": "setParam",
+  "payload": {"notice": "upgrade"},
+  "filterProtocol": "simple-frame",
+  "deviceIds": ["device-001", "device-002"]
+}
+```
+
+**GB28181 下行**：见 [PHASE3.md](PHASE3.md) 中 `InviteStream` 示例；Topic 使用 `omni.command.downlink.{nodeId}`。
 
 ---
 
 ## 12. 相关文档
 
 - [README.md](../README.md) — 项目概览
-- [PHASE1-ITERATION.md](PHASE1-ITERATION.md) — 迭代功能说明
+- [PHASE1-ITERATION.md](PHASE1-ITERATION.md) — 第一期迭代
 - [PHASE2.md](PHASE2.md) — 第二期生产化
-- [PHASES.md](PHASES.md) — 分期规划
+- [PHASE3.md](PHASE3.md) — 第三期（GB28181 / pending / 广播 / API）
+- [PHASE4.md](PHASE4.md) — 第四期规划（gRPC）
+- [PHASES.md](PHASES.md) — 分期总览
+- [design/README.md](design/README.md) — 详细设计索引与压测脚本表

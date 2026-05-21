@@ -14,7 +14,7 @@
 6. [流程架构（连接生命周期）](#6-流程架构连接生命周期)
 7. [技术栈](#7-技术栈)
 8. [详细设计（待确认）](#8-详细设计待确认)
-9. [分期实施（第一期 / 第二期）](docs/PHASES.md)
+9. [分期实施（第一～四期）](docs/PHASES.md)
 10. [环境安装与跑通测试](docs/SETUP.md)
 
 ---
@@ -95,7 +95,7 @@
 |------|------|
 | **omni-core** | 统一设备消息模型（Thing Model）、`ProtocolPlugin` 接口与公共类型 |
 | **omni-network** | Netty 封装：连接、读流、粘拆包、心跳/空闲检测、嗅探与 Pipeline 编排 |
-| **omni-protocols** | 协议插件库（如 JT808、Modbus、自定义协议） |
+| **omni-protocols** | 协议插件库（simple-frame、JT808、GB28181 等） |
 | **omni-bootstrap** | Spring Boot 启动、配置中心集成、插件装配、上行转发 MQ |
 
 ---
@@ -233,32 +233,42 @@
 
 ---
 
-## 8. 详细设计（待确认）
+## 8. 详细设计与分期状态
 
-以下六项已展开为独立详细设计，**确认前不进入开发**。索引与依赖见 [docs/design/README.md](docs/design/README.md)。
+设计索引与压测脚本表见 **[docs/design/README.md](docs/design/README.md)**。
 
 | # | 主题 | 文档 | 状态 |
 |---|------|------|------|
-| 01 | 下行通道（MQ → Session → 编码下发） | [01-downlink-channel.md](docs/design/01-downlink-channel.md) | 待确认 |
-| 02 | 水平扩展（本地会话 / Redis 路由 / drain） | [02-horizontal-scaling.md](docs/design/02-horizontal-scaling.md) | 待确认 |
-| 03 | 传输安全（TLS、mTLS、限流、证书轮换） | [03-transport-security.md](docs/design/03-transport-security.md) | 待确认 |
-| 04 | 可观测性（Metrics、日志、Tracing） | [04-observability.md](docs/design/04-observability.md) | 待确认 |
-| 05 | 配置热更新（分级热更、端口 drain） | [05-config-hot-reload.md](docs/design/05-config-hot-reload.md) | 待确认 |
-| 06 | SLO 与容量（基线、压测、扩容公式） | [06-slo-metrics.md](docs/design/06-slo-metrics.md) | 待确认 |
+| 01 | 下行通道 | [01-downlink-channel.md](docs/design/01-downlink-channel.md) | ✅ 含 pending / 广播 |
+| 02 | 水平扩展 | [02-horizontal-scaling.md](docs/design/02-horizontal-scaling.md) | ✅ Redis + 分节点 Topic |
+| 03 | 传输安全 | [03-transport-security.md](docs/design/03-transport-security.md) | ✅ TLS / 限流 |
+| 04 | 可观测性 | [04-observability.md](docs/design/04-observability.md) | ✅ Metrics + OTel |
+| 05 | 配置热更新 | [05-config-hot-reload.md](docs/design/05-config-hot-reload.md) | ✅ L0～L2 + Nacos |
+| 06 | SLO 与容量 | [06-slo-metrics.md](docs/design/06-slo-metrics.md) | 口径已定，**实测待 PT-07** |
+| 07 | GB28181 | [07-gb28181.md](docs/design/07-gb28181.md) | ✅ M18/M19 |
 
 ### 分期实施
 
-完整分期说明（目标、交付清单、里程碑、验收标准）见 **[docs/PHASES.md](docs/PHASES.md)**。
+完整说明见 **[docs/PHASES.md](docs/PHASES.md)**，专文：[PHASE2.md](docs/PHASE2.md)、[PHASE3.md](docs/PHASE3.md)、[PHASE4.md](docs/PHASE4.md)。
 
-| 阶段 | 一句话 |
-|------|--------|
-| **第一期 MVP** | 接入 + 嗅探 + 1 个协议 + 上下行 Kafka + 本地 Session + 基础监控 + 基础压测 |
-| **第二期 生产增强** | Redis 下行路由 + TLS/mTLS + 配置/证书热更 + drain + Tracing + 全量压测与 SLO 门禁 |
+| 阶段 | 一句话 | 状态 |
+|------|--------|------|
+| **第一期 MVP** | 接入 + 嗅探 + simple-frame/JT808 + Kafka 上下行 + 背压 + 基础压测 | ✅ 已交付 |
+| **第二期 生产增强** | Redis 路由 + TLS + drain + OTel + PT-03/05/06 | ✅ 已交付 |
+| **第三期 业务增强** | GB28181 + 离线下发 + 广播 + 控制面 API + Nacos | ✅ 已交付 |
+| **第四期 规模化** | gRPC 网内下行转发 + 一致性哈希 | 规划中 |
 
-### 如何确认
+### 已实现协议与端口
 
-对每份文档末尾 **「待确认清单」** 回复 `同意默认` 或逐项修改；也可一次性回复 **「全部同意建议默认」** 后开始排期开发。
+| 端口 | 插件 |
+|------|------|
+| 9000 | simple-frame、JT808（嗅探） |
+| 9001 | JT808 |
+| 5060 | GB28181 |
+| 8080 | Actuator、`/api/v1/devices/...` |
+
+环境跑通与 E2E：[docs/SETUP.md](docs/SETUP.md)。容量压测：`tools/loadtest/pt07_device_capacity.py`。
 
 ---
 
-*文档版本：含详细设计 v1；实现代码以确认后里程碑为准。*
+*文档版本：v1.1；与仓库 master 实现同步，冲突时以分期文档与代码为准。*

@@ -2,7 +2,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| 状态 | **待确认** |
+| 状态 | **已实现**（L0～L2 + drain；Nacos 拉取 Phase 3） |
 | 依赖模块 | omni-network, omni-bootstrap |
 | 关联设计 | [02-horizontal-scaling](./02-horizontal-scaling.md), [03-transport-security](./03-transport-security.md) |
 

@@ -2,7 +2,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| 状态 | **待确认** |
+| 状态 | **已实现**（Redis 索引 + 分节点 Topic，Phase 2） |
 | 依赖模块 | omni-network, omni-bootstrap |
 | 关联设计 | [01-downlink-channel](./01-downlink-channel.md), [05-config-hot-reload](./05-config-hot-reload.md) |
 

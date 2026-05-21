@@ -2,7 +2,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| 状态 | **待确认** |
+| 状态 | **已实现**（TLS/限流/黑白名单；国密未做） |
 | 依赖模块 | omni-network, omni-bootstrap |
 | 关联设计 | [04-observability](./04-observability.md) |
 

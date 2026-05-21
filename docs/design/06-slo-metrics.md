@@ -2,7 +2,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| 状态 | **待确认** |
+| 状态 | **口径已定；实测容量待 PT-07 填表** |
 | 依赖设计 | [04-observability](./04-observability.md), [02-horizontal-scaling](./02-horizontal-scaling.md) |
 
 ---
@@ -130,24 +130,31 @@
 
 ## 6. 压测方案
 
-### 6.1 工具
+### 6.1 工具与脚本（仓库已提供）
 
-| 工具 | 用途 |
-|------|------|
-| 自研模拟器 / Gatling TCP | 模拟多协议设备 |
-| Kafka 消费监控 | 确认端到端 |
-| Prometheus | 抓取 SLI |
+| 工具 | 路径 / 用途 |
+|------|-------------|
+| 设备模拟器 | `tools/device_simulator.py`、`tools/jt808_device_simulator.py` |
+| PT-01 长连接 | `tools/loadtest/pt01_hold_connections.py` |
+| PT-02 上行吞吐 | `tools/loadtest/pt02_uplink_throughput.py` |
+| PT-03 下行路由 | `tools/loadtest/pt03_downlink_routing.py` |
+| PT-04 背压说明 | `tools/loadtest/pt04_backpressure_readme.md` |
+| PT-05 TLS | `tools/loadtest/pt05_tls_handshake.py` |
+| PT-06 drain | `tools/loadtest/pt06_rolling_restart.py` |
+| **PT-07 容量** | `tools/loadtest/pt07_device_capacity.py`（渐进建连 + `omni_connections_active` 对照） |
+| 报告模板 | [../loadtest/BASELINE-REPORT.md](../loadtest/BASELINE-REPORT.md) |
 
 ### 6.2 场景
 
 | 场景 ID | 描述 | 通过标准 |
 |---------|------|----------|
-| PT-01 | 3 万长连接，仅心跳 | 24h 无 OOM，连接数稳定 |
-| PT-02 | 3 万连接，每设备 1 msg/10s 上行 | 上行 SLO 达标，Kafka lag < 1s |
-| PT-03 | 嗅探混合 2 协议同端口 | 嗅探成功率 ≥ 99% |
-| PT-04 | Kafka 人为延迟 5s | 背压生效，无 OOM |
-| PT-05 | 1 万下行/分钟 | 下行成功率 ≥ 99% |
-| PT-06 | 滚动重启单节点 | drain 后设备自动重连，业务无大面积告警 |
+| PT-01 | 长连接，周期性 telemetry | 连接数稳定，无泄漏 |
+| PT-02 | 多设备持续上行 | 上行 SLO 达标，Kafka lag 可控 |
+| PT-03 | 分节点下行 Topic | 仅目标节点写 socket |
+| PT-04 | Kafka 人为延迟 | 背压生效，无 OOM |
+| PT-05 | TLS 握手 + 业务 | 握手成功 |
+| PT-06 | 滚动重启单节点 | drain 后会话清零 |
+| **PT-07** | 目标 N 连接保持 T 秒 | 客户端与网关 `omni_connections_active` 一致，填容量表 |
 
 ### 6.3 压测报告模板
 

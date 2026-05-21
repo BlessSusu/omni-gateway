@@ -2,8 +2,8 @@
 
 | 属性 | 值 |
 |------|-----|
-| 版本 | v1.0 |
-| 状态 | **第三期已交付（M18～M22）** |
+| 版本 | v1.1 |
+| 状态 | **第一～三期已交付；第四期规划中** |
 | 关联 | [总体方案](../OmniGateway.md) · [详细设计索引](./design/README.md) |
 
 ---
@@ -27,7 +27,14 @@
 | **配置** | 文件/Nacos 启动加载；L0/L1 热更 | 端口增删、drain 缩容、TLS 热更 |
 | **观测** | Prometheus 核心指标 + JSON 日志 | Tracing、告警模板、压测报告填 SLO |
 
-第三期（业务协议与下行增强）、第四期（规模化 gRPC）见 [PHASE3.md](./PHASE3.md)、[PHASE4.md](./PHASE4.md)。
+| 维度 | 第三期 | 第四期（规划） |
+|------|--------|----------------|
+| **目标** | GB28181、离线下发、广播、控制面 API | gRPC 集群内下行转发、一致性哈希 |
+| **协议** | GB28181（5060） | — |
+| **下行** | pending 补发、广播 Topic | 统一 Topic + 网内转发 |
+| **运维** | REST 路由查询、Nacos 拉取 | 多节点混沌、国密（可选） |
+
+详见 [PHASE3.md](./PHASE3.md)、[PHASE4.md](./PHASE4.md)。
 
 ---
 
@@ -153,7 +160,7 @@ M1 工程与 omni-core 接口定义
 | L2 | 动态新增监听端口 |
 | L2 + drain | 删除端口：停止 accept → 等待连接清零或 300s 超时 → 关闭 Server |
 | L3 | TLS 证书热加载 |
-| 运维 | `/actuator/omni/drain`、`/config`、`/listeners` |
+| 运维 | `POST /actuator/omnidrain`、`GET /actuator/omniconfig`、`GET /actuator/omnilisteners` |
 | 节点 drain | 与 K8s preStop / LB 摘流联动 |
 
 #### D. 可观测性与 SLO（设计 04 + 06）
@@ -204,15 +211,17 @@ M7 Redis SessionRegistry + 节点 Topic 下行
 
 ## 第三期：业务协议与下行增强
 
-详见 [PHASE3.md](./PHASE3.md)。**优先 M18 GB28181**（SIP + MANSCDP+xml），其次离线下发、广播、控制面；**gRPC 不在第三期**。
+详见 [PHASE3.md](./PHASE3.md)。**M18～M22 均已交付**；gRPC 集群转发在第四期。
 
-| 里程碑 | 内容 |
-|--------|------|
-| M18 | GB28181 解析与上行（当前） |
-| M19 | GB28181 下行（推流 URL 等） |
-| M20 | 离线下行补发 |
-| M21 | 下行广播 |
-| M22 | 控制面 API + Nacos |
+| 里程碑 | 内容 | 状态 |
+|--------|------|------|
+| M18 | GB28181 SIP 上行（REGISTER/MESSAGE、MANSCDP+xml） | ✅ |
+| M19 | GB28181 下行（InviteStream、DeviceControl、Catalog） | ✅ |
+| M20 | 离线下行 Redis pending + 上线补发 | ✅ |
+| M21 | 下行广播 `omni.command.downlink.broadcast` | ✅ |
+| M22 | 控制面 API + Nacos 配置拉取 | ✅ |
+
+**压测**：容量长连接推荐 [PT-07](../tools/loadtest/pt07_device_capacity.py)，结果填入 [loadtest/BASELINE-REPORT.md](./loadtest/BASELINE-REPORT.md)。
 
 ## 第四期：规模化与 gRPC
 
@@ -220,22 +229,22 @@ M7 Redis SessionRegistry + 节点 Topic 下行
 
 ---
 
-## 两期对照表
+## 分期能力对照表
 
-| 能力域 | 第一期 | 第二期 |
-|--------|--------|--------|
-| TCP 接入 + 嗅探 | ✅ | ✅ |
-| 协议插件 | 1 个完整 | 2+ 个 |
-| 上行 Kafka | ✅ | ✅ |
-| 下行 Kafka | ✅ 本地过滤 | ✅ Redis 精准路由 |
-| Session | 仅本地内存 | 本地 + Redis 索引 |
-| TLS | 可选/明文可接受 | 默认开启 |
-| mTLS | ❌ | ✅ 可配置 |
-| 配置热更 | L0/L1 | L0～L3 + drain |
-| Metrics | 核心集 | 核心集 + 告警 |
-| Tracing | ❌ | ✅ |
-| 压测 | PT-01/02/04 | PT-01～06 |
-| 单节点连接承诺 | 压测填表（目标 3 万） | 生产 SLO 门禁 |
+| 能力域 | 第一期 | 第二期 | 第三期 |
+|--------|--------|--------|--------|
+| TCP 接入 + 嗅探 | ✅ | ✅ | ✅ |
+| 协议插件 | simple-frame | + JT808 | + GB28181（5060） |
+| 上行 Kafka | ✅ | ✅ | ✅ |
+| 下行 Kafka | 本地过滤 | Redis 分节点 Topic | pending / 广播 |
+| Session | 仅本地 | 本地 + Redis | 同左 + pending 队列 |
+| TLS / mTLS | 可选 | ✅ 可配置 | ✅ |
+| 配置热更 | L0/L1 | L0～L3 + drain | + Nacos 拉取 |
+| 控制面 HTTP | Actuator | omnidrain / omnilisteners | `/api/v1/devices/...` |
+| Metrics / Tracing | Metrics | + OTel Span | ✅ |
+| 压测脚本 | PT-01/02/04 | + PT-03/05/06 | + **PT-07** 容量 |
+| 单节点连接 | 设计 3 万（待 PT-07 实测） | 同左 | 同左 |
+| gRPC 网内转发 | ❌ | ❌ | ❌（第四期） |
 
 ---
 

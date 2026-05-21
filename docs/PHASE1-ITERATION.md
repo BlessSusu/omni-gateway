@@ -28,7 +28,10 @@
 | PT-01 | `tools/loadtest/pt01_hold_connections.py` |
 | PT-02 | `tools/loadtest/pt02_uplink_throughput.py` |
 | PT-04 | `tools/loadtest/pt04_backpressure_readme.md` |
+| PT-07 | `tools/loadtest/pt07_device_capacity.py`（容量，第三期满后推荐） |
 | 报告 | `docs/loadtest/BASELINE-REPORT.md` |
+
+第二期脚本：PT-03/05/06（见 [PHASE2.md](./PHASE2.md)）。完整索引见 [design/README.md](./design/README.md)。
 
 ## 操作速查
 
