@@ -1,6 +1,11 @@
 # 本地开发用 Kafka（KRaft 单节点，无需 ZooKeeper）
 # 启动：docker compose up -d
 # 停止：docker compose down
+#
+# 远程访问时务必设置对外地址（与 omni.kafka.bootstrap-servers 一致）：
+#   $env:KAFKA_ADVERTISED_HOST="42.192.55.235"
+#   docker compose up -d
+# 否则客户端 bootstrap 能连上，但元数据会返回 localhost:9092 导致连接失败。
 
 services:
   kafka:
@@ -13,7 +18,8 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      # 容器内监听 9092，映射到宿主机 19092；advertised 必须是客户端实际访问的 host:port
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://${KAFKA_ADVERTISED_HOST:-127.0.0.1}:19092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093

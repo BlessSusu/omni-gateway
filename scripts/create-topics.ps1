@@ -2,6 +2,7 @@
 # 前提：docker compose 已启动，容器名 omni-kafka
 
 $ErrorActionPreference = "Stop"
+# 容器内地址（宿主机请用 127.0.0.1:19092 作为 omni.kafka.bootstrap-servers）
 $Bootstrap = "localhost:9092"
 $Topics = @(
     "omni.device.uplink",

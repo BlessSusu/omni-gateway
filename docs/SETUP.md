@@ -94,7 +94,46 @@ chmod +x scripts/create-topics.sh
 docker compose down
 ```
 
+### 3.5 远程 Kafka / 日志里出现 `localhost:9092`（重要）
+
+`omni.kafka.bootstrap-servers` 只用于**第一次**连上集群；之后客户端会按 Broker 返回的 **advertised address** 建连。
+
+若日志类似：
+
+```text
+Connection to node 1 (localhost/127.0.0.1:9092) could not be established
+```
+
+说明 **Broker 对外广播的地址仍是 `localhost:9092`**，与你在 `application.yml` 里配的 `42.192.55.235:19092` 无关，需要在 **Kafka 服务端** 修改 `advertised.listeners`。
+
+**Docker Compose 部署在公网机（如 42.192.55.235）时：**
+
+```powershell
+$env:KAFKA_ADVERTISED_HOST = "42.192.55.235"
+docker compose down
+docker compose up -d
+.\scripts\create-topics.ps1
+```
+
+`docker-compose.yml` 中默认 `KAFKA_ADVERTISED_HOST=127.0.0.1`，仅适合本机访问 `127.0.0.1:19092`。
+
+**裸机 / 安装包 Kafka** 示例（`server.properties`）：
+
+```properties
+listeners=PLAINTEXT://0.0.0.0:19092
+advertised.listeners=PLAINTEXT://42.192.55.235:19092
+```
+
+修改后重启 Broker，再用 `kafka-broker-api-versions.sh --bootstrap-server 42.192.55.235:19092` 验证。
+
+本机网关配置保持：
+
+```yaml
+omni.kafka.bootstrap-servers: 42.192.55.235:19092
+```
+
 ---
+
 
 ## 4. 构建并启动网关
 
@@ -309,7 +348,8 @@ java -jar omni-bootstrap\target\omni-bootstrap-1.0.0-SNAPSHOT.jar `
 
 | 现象 | 可能原因 | 处理 |
 |------|----------|------|
-| 启动报 Kafka 连接失败 | Kafka 未启动或地址错误 | `docker compose up -d`，检查 9092 |
+| 启动报 Kafka 连接失败 | Kafka 未启动或地址错误 | `docker compose up -d`，检查 19092 |
+| bootstrap 正确但仍连 `localhost:9092` | Broker `advertised.listeners` 配成 localhost:9092 | 见 §3.5，设置 `KAFKA_ADVERTISED_HOST` 或 `advertised.listeners` 为公网 IP:19092 |
 | 嗅探后断开 | 首包不是 OMNI / 0x7E | 确认端口与协议、见协议文档 |
 | 下行 OFFLINE | 设备未鉴权或不在本节点 Session | 先跑模拟器鉴权，再发下行 |
 | 下行无 SUCCESS | 未回 ack 或 messageId 不一致 | simple-frame 需回 `{"type":"ack","messageId":"cmd-001"}` |

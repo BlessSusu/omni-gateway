@@ -5,6 +5,8 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -23,8 +25,12 @@ import java.util.Map;
 @EnableKafka
 public class KafkaConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(KafkaConfig.class);
+
     @Bean
     public ProducerFactory<String, String> producerFactory(OmniGatewayProperties properties) {
+        log.info("Kafka bootstrap-servers={} (broker advertised address must be reachable from this host)",
+                properties.getKafka().getBootstrapServers());
         Map<String, Object> props = new HashMap<>();
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, properties.getKafka().getBootstrapServers());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
