@@ -1,0 +1,7 @@
+# 外部热更示例（复制为 omni-gateway-override.yaml 并在 application.yml 配置 omni.config.external-file）
+omni:
+  gateway:
+    config-version: 2
+    reader-idle-seconds: 180
+  security:
+    connection-rate-per-ip: 30

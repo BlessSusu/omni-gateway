@@ -1,0 +1,8 @@
+target/
+docker-compose.override.yml
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+*.log

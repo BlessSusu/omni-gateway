@@ -1,0 +1,43 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: omni-gateway-test
+  main:
+    banner-mode: off
+
+omni:
+  node-id: test-node
+  gateway:
+    config-version: 1
+    reader-idle-seconds: 300
+    kick-old-on-reauth: true
+    listeners:
+      - port: 19000
+        plugins:
+          - simple-frame
+        plugin-priority:
+          - simple-frame
+        sniff:
+          max-bytes: 256
+          timeout-ms: 5000
+          min-probe-length: 4
+  kafka:
+    enabled: true
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    uplink-topic: omni.device.uplink
+    lifecycle-topic: omni.device.lifecycle
+    lifecycle-enabled: true
+    failure-threshold: 3
+  downlink:
+    enabled: true
+    topic: omni.command.downlink
+    result-topic: omni.command.downlink.result
+    result-enabled: true
+    consumer-group: omni-gateway-downlink-test
+
+logging:
+  level:
+    com.omni.gateway: WARN
+    root: WARN

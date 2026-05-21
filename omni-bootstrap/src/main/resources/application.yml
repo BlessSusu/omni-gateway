@@ -1,0 +1,76 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: omni-gateway
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics,info,omniconfig
+  endpoint:
+    omniconfig:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+omni:
+  node-id: ${HOSTNAME:local}-${server.port}
+  gateway:
+    config-version: 1
+    reader-idle-seconds: 120
+    kick-old-on-reauth: true
+    listeners:
+      - port: 9000
+        plugins:
+          - jt808
+          - simple-frame
+        plugin-priority:
+          - jt808
+          - simple-frame
+        sniff:
+          max-bytes: 256
+          timeout-ms: 5000
+          min-probe-length: 1
+      - port: 9001
+        plugins:
+          - jt808
+        plugin-priority:
+          - jt808
+        sniff:
+          max-bytes: 512
+          timeout-ms: 5000
+          min-probe-length: 1
+  security:
+    connection-rate-per-ip: 50
+    ip-deny-list: []
+    ip-allow-list: []
+  backpressure:
+    max-global-pending: 5000
+    max-per-channel-pending: 32
+  config:
+    external-file: ""
+    poll-interval-ms: 30000
+  kafka:
+    enabled: true
+    bootstrap-servers: 42.192.55.235:19092
+    uplink-topic: omni.device.uplink
+    lifecycle-topic: omni.device.lifecycle
+    lifecycle-enabled: true
+    failure-threshold: 3
+  downlink:
+    enabled: true
+    topic: omni.command.downlink
+    result-topic: omni.command.downlink.result
+    result-enabled: true
+    consumer-group: omni-gateway-downlink
+  logging:
+    json-enabled: true
+
+logging:
+  level:
+    com.omni.gateway: INFO
+    root: INFO
