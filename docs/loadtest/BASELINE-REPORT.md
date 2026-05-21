@@ -21,7 +21,12 @@
 **命令**
 
 ```bash
+# PT-01 快速验证
 python tools/loadtest/pt01_hold_connections.py --connections 1000 --duration-sec 300
+
+# PT-07 容量压测（渐进建连 + 网关指标对照，推荐填表）
+python tools/loadtest/pt07_device_capacity.py --connections 5000 --ramp-sec 120 --duration-sec 300 \
+  --metrics-url http://127.0.0.1:8080/actuator/prometheus
 ```
 
 | 指标 | 目标 | 实测 |
