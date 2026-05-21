@@ -5,6 +5,7 @@ import com.omni.gateway.core.auth.AuthResult;
 import com.omni.gateway.core.logging.OmniMdc;
 import com.omni.gateway.core.backpressure.BackpressureController;
 import com.omni.gateway.core.lifecycle.DeviceLifecyclePublisher;
+import com.omni.gateway.core.lifecycle.DeviceOnlineListener;
 import com.omni.gateway.core.model.ThingModel;
 import com.omni.gateway.core.plugin.ProtocolPlugin;
 import com.omni.gateway.core.plugin.PluginRegistry;
@@ -39,6 +40,7 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
     private final String gatewayNodeId;
     private final BackpressureController backpressure;
     private final DeviceLifecyclePublisher lifecyclePublisher;
+    private final DeviceOnlineListener deviceOnlineListener;
     private final ConfigurableProtocolTrafficLog protocolTrafficLog;
     private final Tracer tracer;
 
@@ -51,6 +53,7 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
                                  String gatewayNodeId,
                                  BackpressureController backpressure,
                                  DeviceLifecyclePublisher lifecyclePublisher,
+                                 DeviceOnlineListener deviceOnlineListener,
                                  ConfigurableProtocolTrafficLog protocolTrafficLog,
                                  Tracer tracer) {
         this.pluginRegistry = pluginRegistry;
@@ -62,6 +65,7 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
         this.gatewayNodeId = gatewayNodeId;
         this.backpressure = backpressure;
         this.lifecyclePublisher = lifecyclePublisher;
+        this.deviceOnlineListener = deviceOnlineListener;
         this.protocolTrafficLog = protocolTrafficLog;
         this.tracer = tracer;
     }
@@ -107,6 +111,7 @@ public class UplinkDispatchHandler extends SimpleChannelInboundHandler<Object> {
                     session.getDeviceId(), gatewayNodeId, protocolId, sessionIndexTtlSec);
             backpressure.registerChannel(ctx.channel());
             lifecyclePublisher.publishOnline(session);
+            deviceOnlineListener.onDeviceOnline(session);
             OmniMdc.bindDevice(session.getDeviceId(), protocolId, session.getChannelId());
             OmniMdc.event("device_auth");
             log.info("Device authenticated");

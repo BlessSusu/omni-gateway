@@ -5,6 +5,7 @@ import com.omni.gateway.core.backpressure.BackpressureController;
 import com.omni.gateway.core.config.GatewayConfigSnapshot;
 import com.omni.gateway.core.config.PortListenerConfig;
 import com.omni.gateway.core.lifecycle.DeviceLifecyclePublisher;
+import com.omni.gateway.core.lifecycle.DeviceOnlineListener;
 import com.omni.gateway.core.plugin.PluginRegistry;
 import com.omni.gateway.core.session.DeviceSession;
 import com.omni.gateway.core.session.DistributedSessionIndex;
@@ -65,6 +66,7 @@ public class GatewayChannelInitializer extends ChannelInitializer<SocketChannel>
                                      String gatewayNodeId,
                                      BackpressureController backpressure,
                                      DeviceLifecyclePublisher lifecyclePublisher,
+                                     DeviceOnlineListener deviceOnlineListener,
                                      ConfigurableProtocolTrafficLog protocolTrafficLog,
                                      SslContextFactory sslContextFactory,
                                      NodeDrainService nodeDrainService,
@@ -92,7 +94,8 @@ public class GatewayChannelInitializer extends ChannelInitializer<SocketChannel>
                 metrics, backpressure, lifecyclePublisher);
         this.uplinkDispatchHandler = new UplinkDispatchHandler(
                 pluginRegistry, sessionRegistry, distributedSessionIndex, sessionIndexTtlSec,
-                uplinkPublisher, metrics, gatewayNodeId, backpressure, lifecyclePublisher, protocolTrafficLog, tracer);
+                uplinkPublisher, metrics, gatewayNodeId, backpressure, lifecyclePublisher,
+                deviceOnlineListener, protocolTrafficLog, tracer);
         this.drainRejectHandler = new DrainRejectHandler(nodeDrainService, portListenerManager);
     }
 

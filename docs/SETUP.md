@@ -452,6 +452,13 @@ mvn test
 - `MESSAGE` + `MANSCDP+xml`（如 `Keepalive`）→ 上行 Kafka，`messageType` 为 `CmdType`。
 - 设计说明：[design/07-gb28181.md](design/07-gb28181.md)、[PHASE3.md](PHASE3.md)。
 
+### 第三期能力（M19～M22）
+
+- **离线下发**：`omni.downlink.pending-enabled: true`（需 Redis）
+- **广播**：Topic `omni.command.downlink.broadcast`，`broadcast-enabled: true`
+- **路由 API**：`GET http://localhost:8080/api/v1/devices/{deviceId}/route`
+- **Nacos**：`omni.nacos.enabled: true` 后定时拉取 `omni-gateway.yaml`
+
 ---
 
 ## 12. 相关文档

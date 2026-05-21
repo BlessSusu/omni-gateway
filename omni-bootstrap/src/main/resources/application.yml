@@ -92,6 +92,20 @@ omni:
     result-topic: omni.command.downlink.result
     result-enabled: true
     consumer-group: omni-gateway-downlink
+    pending-enabled: true
+    pending-max-per-device: 50
+    pending-ttl-seconds: 86400
+    pending-replay-max: 20
+    broadcast-enabled: true
+    broadcast-topic: omni.command.downlink.broadcast
+  nacos:
+    enabled: false
+    server-addr: 127.0.0.1:8848
+    data-id: omni-gateway.yaml
+    group: DEFAULT_GROUP
+    poll-interval-ms: 30000
+  api:
+    enabled: true
   tls:
     enabled: false
     mtls-enabled: false

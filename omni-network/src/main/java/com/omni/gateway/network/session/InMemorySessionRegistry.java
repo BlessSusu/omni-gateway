@@ -6,6 +6,8 @@ import io.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -61,5 +63,10 @@ public class InMemorySessionRegistry implements SessionRegistry {
     @Override
     public int localSessionCountOnPort(int port) {
         return (int) sessions.values().stream().filter(s -> s.getLocalPort() == port).count();
+    }
+
+    @Override
+    public Collection<DeviceSession> localSessions() {
+        return List.copyOf(sessions.values());
     }
 }

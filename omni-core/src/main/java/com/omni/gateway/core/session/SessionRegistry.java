@@ -1,5 +1,6 @@
 package com.omni.gateway.core.session;
 
+import java.util.Collection;
 import java.util.Optional;
 
 public interface SessionRegistry {
@@ -15,4 +16,6 @@ public interface SessionRegistry {
     int localSessionCount();
 
     int localSessionCountOnPort(int port);
+
+    Collection<DeviceSession> localSessions();
 }

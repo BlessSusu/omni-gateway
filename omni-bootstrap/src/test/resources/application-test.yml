@@ -44,6 +44,8 @@ omni:
     result-topic: omni.command.downlink.result
     result-enabled: true
     consumer-group: omni-gateway-downlink-test
+    pending-enabled: false
+    broadcast-enabled: false
 
 logging:
   level:

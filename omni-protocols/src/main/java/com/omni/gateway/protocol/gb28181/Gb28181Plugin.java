@@ -139,31 +139,28 @@ public class Gb28181Plugin implements ProtocolPlugin {
 
     @Override
     public Optional<ByteBuf> encodeDownlink(DeviceSession session, CommandEnvelope command) {
-        if (command.getPayload() == null) {
-            return Optional.empty();
-        }
-        String xml = command.getPayload().has("xml")
-                ? command.getPayload().get("xml").asText()
-                : command.getPayload().toString();
-        if (xml == null || xml.isBlank()) {
-            return Optional.empty();
-        }
         String deviceId = session.getDeviceId() != null ? session.getDeviceId() : command.getDeviceId();
-        String toUri = "sip:" + deviceId + "@3402000000";
-        String fromUri = "sip:34020000001320000001@3402000000";
-        String callId = command.getMessageId() != null ? command.getMessageId() : String.valueOf(System.nanoTime());
-        StringBuilder sb = new StringBuilder(1024);
-        sb.append("MESSAGE ").append(toUri).append(" SIP/2.0\r\n");
-        sb.append("Via: SIP/2.0/TCP ").append(session.getChannel().localAddress()).append(";branch=z9hG4bK-omni\r\n");
-        sb.append("From: <").append(fromUri).append(">;tag=omni\r\n");
-        sb.append("To: <").append(toUri).append(">\r\n");
-        sb.append("Call-ID: ").append(callId).append("\r\n");
-        sb.append("CSeq: 1 MESSAGE\r\n");
-        sb.append("Content-Type: Application/MANSCDP+xml\r\n");
-        byte[] bodyBytes = xml.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        sb.append("Content-Length: ").append(bodyBytes.length).append("\r\n\r\n");
-        sb.append(xml);
-        return Optional.of(Unpooled.wrappedBuffer(sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        if (deviceId == null || deviceId.isBlank()) {
+            return Optional.empty();
+        }
+        Gb28181DownlinkBuilder.DeviceSessionLike ctx = new Gb28181DownlinkBuilder.DeviceSessionLike() {
+            @Override
+            public String deviceId() {
+                return deviceId;
+            }
+
+            @Override
+            public String localAddress() {
+                return String.valueOf(session.getChannel().localAddress());
+            }
+        };
+        try {
+            ByteBuf buf = Gb28181DownlinkBuilder.build(
+                    ctx, command.getCommandType(), command.getPayload(), command.getMessageId());
+            return Optional.of(buf);
+        } catch (Exception e) {
+            return Optional.empty();
+        }
     }
 
     @Override

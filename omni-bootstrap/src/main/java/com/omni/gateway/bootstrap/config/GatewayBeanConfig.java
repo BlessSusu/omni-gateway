@@ -5,6 +5,7 @@ import com.omni.gateway.core.backpressure.BackpressureController;
 import com.omni.gateway.core.config.GatewayConfigSnapshot;
 import com.omni.gateway.core.config.TlsConfig;
 import com.omni.gateway.core.lifecycle.DeviceLifecyclePublisher;
+import com.omni.gateway.core.lifecycle.DeviceOnlineListener;
 import com.omni.gateway.core.plugin.PluginRegistry;
 import com.omni.gateway.core.plugin.ProtocolPlugin;
 import com.omni.gateway.core.session.DistributedSessionIndex;
@@ -115,6 +116,7 @@ public class GatewayBeanConfig {
                                                    OmniMetrics metrics,
                                                    BackpressureController backpressure,
                                                    DeviceLifecyclePublisher lifecyclePublisher,
+                                                   DeviceOnlineListener deviceOnlineListener,
                                                    ConfigurableProtocolTrafficLog protocolTrafficLog,
                                                    SslContextFactory sslContextFactory,
                                                    @Lazy NodeDrainService nodeDrainService,
@@ -123,7 +125,7 @@ public class GatewayBeanConfig {
                 configRef, pluginRegistry, sessionRegistry, distributedSessionIndex,
                 properties.resolveSessionRedisTtlSeconds(),
                 uplinkPublisher, metrics, properties.getNodeId(),
-                backpressure, lifecyclePublisher, protocolTrafficLog,
+                backpressure, lifecyclePublisher, deviceOnlineListener, protocolTrafficLog,
                 sslContextFactory, nodeDrainService, tracer);
     }
 

@@ -24,6 +24,8 @@ public class OmniGatewayProperties {
     private Session session = new Session();
     private Tls tls = new Tls();
     private Observability observability = new Observability();
+    private Nacos nacos = new Nacos();
+    private Api api = new Api();
 
     public long resolveSessionRedisTtlSeconds() {
         if (session.getRedisTtlSeconds() > 0) {
@@ -155,6 +157,82 @@ public class OmniGatewayProperties {
 
     public void setObservability(Observability observability) {
         this.observability = observability;
+    }
+
+    public Nacos getNacos() {
+        return nacos;
+    }
+
+    public void setNacos(Nacos nacos) {
+        this.nacos = nacos;
+    }
+
+    public Api getApi() {
+        return api;
+    }
+
+    public void setApi(Api api) {
+        this.api = api;
+    }
+
+    public static class Nacos {
+        private boolean enabled;
+        private String serverAddr = "127.0.0.1:8848";
+        private String dataId = "omni-gateway.yaml";
+        private String group = "DEFAULT_GROUP";
+        private long pollIntervalMs = 30000;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getServerAddr() {
+            return serverAddr;
+        }
+
+        public void setServerAddr(String serverAddr) {
+            this.serverAddr = serverAddr;
+        }
+
+        public String getDataId() {
+            return dataId;
+        }
+
+        public void setDataId(String dataId) {
+            this.dataId = dataId;
+        }
+
+        public String getGroup() {
+            return group;
+        }
+
+        public void setGroup(String group) {
+            this.group = group;
+        }
+
+        public long getPollIntervalMs() {
+            return pollIntervalMs;
+        }
+
+        public void setPollIntervalMs(long pollIntervalMs) {
+            this.pollIntervalMs = pollIntervalMs;
+        }
+    }
+
+    public static class Api {
+        private boolean enabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
     }
 
     public static class Session {
@@ -515,6 +593,13 @@ public class OmniGatewayProperties {
         private String resultTopic = "omni.command.downlink.result";
         private boolean resultEnabled = true;
         private String consumerGroupSuffix = "local";
+        private boolean pendingEnabled;
+        private int pendingMaxPerDevice = 50;
+        private long pendingTtlSeconds = 86400;
+        private int pendingReplayMax = 20;
+        private boolean broadcastEnabled;
+        private String broadcastTopic = "omni.command.downlink.broadcast";
+        private String broadcastConsumerGroup = "omni-gateway-broadcast";
 
         public String resolveNodeTopic(String nodeId) {
             return nodeTopicPattern.replace("{nodeId}", nodeId);
@@ -582,6 +667,62 @@ public class OmniGatewayProperties {
 
         public void setConsumerGroupSuffix(String consumerGroupSuffix) {
             this.consumerGroupSuffix = consumerGroupSuffix;
+        }
+
+        public boolean isPendingEnabled() {
+            return pendingEnabled;
+        }
+
+        public void setPendingEnabled(boolean pendingEnabled) {
+            this.pendingEnabled = pendingEnabled;
+        }
+
+        public int getPendingMaxPerDevice() {
+            return pendingMaxPerDevice;
+        }
+
+        public void setPendingMaxPerDevice(int pendingMaxPerDevice) {
+            this.pendingMaxPerDevice = pendingMaxPerDevice;
+        }
+
+        public long getPendingTtlSeconds() {
+            return pendingTtlSeconds;
+        }
+
+        public void setPendingTtlSeconds(long pendingTtlSeconds) {
+            this.pendingTtlSeconds = pendingTtlSeconds;
+        }
+
+        public int getPendingReplayMax() {
+            return pendingReplayMax;
+        }
+
+        public void setPendingReplayMax(int pendingReplayMax) {
+            this.pendingReplayMax = pendingReplayMax;
+        }
+
+        public boolean isBroadcastEnabled() {
+            return broadcastEnabled;
+        }
+
+        public void setBroadcastEnabled(boolean broadcastEnabled) {
+            this.broadcastEnabled = broadcastEnabled;
+        }
+
+        public String getBroadcastTopic() {
+            return broadcastTopic;
+        }
+
+        public void setBroadcastTopic(String broadcastTopic) {
+            this.broadcastTopic = broadcastTopic;
+        }
+
+        public String getBroadcastConsumerGroup() {
+            return broadcastConsumerGroup;
+        }
+
+        public void setBroadcastConsumerGroup(String broadcastConsumerGroup) {
+            this.broadcastConsumerGroup = broadcastConsumerGroup;
         }
     }
 }

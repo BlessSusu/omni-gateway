@@ -2,6 +2,7 @@ package com.omni.gateway.bootstrap.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.omni.gateway.bootstrap.OmniGatewayProperties;
+import com.omni.gateway.bootstrap.downlink.PendingDownlinkReplayService;
 import com.omni.gateway.core.model.CommandEnvelope;
 import com.omni.gateway.core.model.DownlinkResult;
 import com.omni.gateway.core.model.DownlinkStatus;
@@ -31,6 +32,7 @@ public class DownlinkConsumer {
     private final OmniMetrics metrics;
     private final KafkaDownlinkResultPublisher resultPublisher;
     private final OmniGatewayProperties properties;
+    private final PendingDownlinkReplayService pendingReplayService;
 
     public DownlinkConsumer(SessionRegistry sessionRegistry,
                             DistributedSessionIndex sessionIndex,
@@ -38,7 +40,8 @@ public class DownlinkConsumer {
                             DeviceSerialExecutor serialExecutor,
                             OmniMetrics metrics,
                             KafkaDownlinkResultPublisher resultPublisher,
-                            OmniGatewayProperties properties) {
+                            OmniGatewayProperties properties,
+                            PendingDownlinkReplayService pendingReplayService) {
         this.sessionRegistry = sessionRegistry;
         this.sessionIndex = sessionIndex;
         this.dispatcher = dispatcher;
@@ -46,6 +49,7 @@ public class DownlinkConsumer {
         this.metrics = metrics;
         this.resultPublisher = resultPublisher;
         this.properties = properties;
+        this.pendingReplayService = pendingReplayService;
     }
 
     @KafkaListener(
@@ -72,6 +76,10 @@ public class DownlinkConsumer {
                 if (route.isPresent() && !properties.getNodeId().equals(route.get().nodeId())) {
                     resultPublisher.publish(DownlinkResult.of(
                             cmd.getMessageId(), cmd.getDeviceId(), DownlinkStatus.OFFLINE, "not_local"));
+                } else if (properties.getDownlink().isPendingEnabled()) {
+                    pendingReplayService.enqueueIfOffline(cmd);
+                    resultPublisher.publish(DownlinkResult.of(
+                            cmd.getMessageId(), cmd.getDeviceId(), DownlinkStatus.OFFLINE, "queued_pending"));
                 } else {
                     metrics.downlinkSkipNotLocal();
                     resultPublisher.publish(DownlinkResult.of(

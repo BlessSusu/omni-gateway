@@ -7,6 +7,7 @@ import com.omni.gateway.core.session.DistributedSessionIndex;
 import com.omni.gateway.core.session.SessionRegistry;
 import com.omni.gateway.core.backpressure.BackpressureController;
 import com.omni.gateway.core.lifecycle.DeviceLifecyclePublisher;
+import com.omni.gateway.core.lifecycle.DeviceOnlineListener;
 import com.omni.gateway.core.uplink.UplinkPublisher;
 import com.omni.gateway.network.drain.NodeDrainService;
 import com.omni.gateway.network.handler.GatewayChannelInitializer;
@@ -45,6 +46,7 @@ public class PortListenerManager {
     private final String gatewayNodeId;
     private final BackpressureController backpressure;
     private final DeviceLifecyclePublisher lifecyclePublisher;
+    private final DeviceOnlineListener deviceOnlineListener;
     private final ConfigurableProtocolTrafficLog protocolTrafficLog;
     private final SslContextFactory sslContextFactory;
     private final NodeDrainService nodeDrainService;
@@ -66,6 +68,7 @@ public class PortListenerManager {
                                String gatewayNodeId,
                                BackpressureController backpressure,
                                DeviceLifecyclePublisher lifecyclePublisher,
+                               DeviceOnlineListener deviceOnlineListener,
                                ConfigurableProtocolTrafficLog protocolTrafficLog,
                                SslContextFactory sslContextFactory,
                                NodeDrainService nodeDrainService,
@@ -80,6 +83,7 @@ public class PortListenerManager {
         this.gatewayNodeId = gatewayNodeId;
         this.backpressure = backpressure;
         this.lifecyclePublisher = lifecyclePublisher;
+        this.deviceOnlineListener = deviceOnlineListener;
         this.protocolTrafficLog = protocolTrafficLog;
         this.sslContextFactory = sslContextFactory;
         this.nodeDrainService = nodeDrainService;
@@ -105,7 +109,7 @@ public class PortListenerManager {
                         port, listener.isTls(), configRef, pluginRegistry, sessionRegistry,
                         distributedSessionIndex, sessionIndexTtlSec,
                         uplinkPublisher, metrics, gatewayNodeId,
-                        backpressure, lifecyclePublisher, protocolTrafficLog,
+                        backpressure, lifecyclePublisher, deviceOnlineListener, protocolTrafficLog,
                         sslContextFactory, nodeDrainService, this, tracer));
 
         ChannelFuture future = bootstrap.bind(port).sync();
