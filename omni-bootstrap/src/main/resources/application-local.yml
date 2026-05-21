@@ -1,0 +1,5 @@
+# 本机 Docker Kafka（docker compose up -d，默认 KAFKA_ADVERTISED_HOST=127.0.0.1）
+# IntelliJ / 命令行：--spring.profiles.active=local
+omni:
+  kafka:
+    bootstrap-servers: 127.0.0.1:19092
