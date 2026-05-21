@@ -55,6 +55,15 @@ omni:
           max-bytes: 512
           timeout-ms: 5000
           min-probe-length: 1
+      - port: 5060
+        plugins:
+          - gb28181
+        plugin-priority:
+          - gb28181
+        sniff:
+          max-bytes: 4096
+          timeout-ms: 8000
+          min-probe-length: 7
   security:
     connection-rate-per-ip: 50
     ip-deny-list: []

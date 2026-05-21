@@ -13,6 +13,7 @@
 | 04 | 可观测性 | [04-observability.md](./04-observability.md) | 待确认 | Phase 1（与核心同步） |
 | 05 | 配置热更新 | [05-config-hot-reload.md](./05-config-hot-reload.md) | 待确认 | Phase 1 基础 / Phase 2 drain |
 | 06 | SLO 与容量 | [06-slo-metrics.md](./06-slo-metrics.md) | 待确认 | Phase 1 定义 / 压测后填数 |
+| 07 | GB28181 协议 | [07-gb28181.md](./07-gb28181.md) | 开发中 | **Phase 3 M18** |
 
 ## 依赖关系
 

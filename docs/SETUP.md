@@ -445,6 +445,13 @@ mvn test
 
 运维：`POST /actuator/omnidrain`、`GET /actuator/omnilisteners`。详见 [PHASE2.md](PHASE2.md)。
 
+### GB28181（第三期 M18，TCP 5060）
+
+- 默认监听 **5060**，仅启用 `gb28181` 插件（与 JT808 分端口，避免嗅探冲突）。
+- 设备 `REGISTER` → 网关 `200 OK` → 会话绑定 20 位 `DeviceID`。
+- `MESSAGE` + `MANSCDP+xml`（如 `Keepalive`）→ 上行 Kafka，`messageType` 为 `CmdType`。
+- 设计说明：[design/07-gb28181.md](design/07-gb28181.md)、[PHASE3.md](PHASE3.md)。
+
 ---
 
 ## 12. 相关文档

@@ -19,6 +19,7 @@ import com.omni.gateway.network.metrics.OmniMetrics;
 import com.omni.gateway.network.server.PortListenerManager;
 import com.omni.gateway.network.session.InMemorySessionRegistry;
 import com.omni.gateway.network.ssl.SslContextFactory;
+import com.omni.gateway.protocol.gb28181.Gb28181Plugin;
 import com.omni.gateway.protocol.jt808.Jt808Plugin;
 import com.omni.gateway.protocol.simpleframe.SimpleFramePlugin;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -68,6 +69,11 @@ public class GatewayBeanConfig {
     @Bean
     public Jt808Plugin jt808Plugin(OmniMetrics metrics, ProtocolTrafficLog protocolTrafficLog) {
         return new Jt808Plugin(metrics, protocolTrafficLog);
+    }
+
+    @Bean
+    public Gb28181Plugin gb28181Plugin(OmniMetrics metrics, ProtocolTrafficLog protocolTrafficLog) {
+        return new Gb28181Plugin(metrics, protocolTrafficLog);
     }
 
     @Bean
